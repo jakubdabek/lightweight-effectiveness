@@ -1,59 +1,40 @@
-FROM ubuntu:16.04
+FROM ubuntu:20.04
 
-RUN apt-get update && \
-  apt-get install -y --no-install-recommends locales && \
-  locale-gen en_US.UTF-8 && \
-  apt-get dist-upgrade -y && \
-  apt-get --purge remove openjdk* && \
-  echo "oracle-java8-installer shared/accepted-oracle-license-v1-1 select true" | debconf-set-selections && \
-  echo "deb http://ppa.launchpad.net/webupd8team/java/ubuntu xenial main" > /etc/apt/sources.list.d/webupd8team-java-trusty.list && \
-  apt-key adv --keyserver keyserver.ubuntu.com --recv-keys EEA14886 && \
-  apt-get update && \
-  apt-get install -y --no-install-recommends oracle-java8-installer oracle-java8-set-default && \
-  apt-get clean all
+ARG DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get -y install maven
+RUN apt update && \
+    apt install -y --no-install-recommends locales && \
+    locale-gen en_US.UTF-8 && \
+    apt install -y --no-install-recommends \
+        openjdk-8-jdk openjdk-11-jdk maven \
+        python3-pip \
+        git ruby vim \
+        && \
+    apt clean && apt autoclean && apt autoremove && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update
-RUN apt-get -y install git
+RUN update-java-alternatives --set java-1.8.0-openjdk-amd64
 
-RUN \
-  apt-get update && \
-  apt-get install -y python python-dev python-pip python-virtualenv && \
-  rm -rf /var/lib/apt/lists/*
+WORKDIR /root/experiments
 
-RUN pip install pip --upgrade
-RUN pip install wheel
-RUN pip install pandas
-RUN pip install GitPython
-RUN pip install htmlparser
+COPY requirements.txt ./
+RUN python3 -m pip install --upgrade pip setuptools
 
-RUN apt-get update
-RUN apt-get install -y python3-pip
-RUN python3 -m pip install pip --upgrade
-RUN python3 -m pip install GitPython
-RUN python3 -m pip install pandas
-RUN python3 -m pip install htmlparser
+RUN python3 -m pip install -r requirements.txt
 
-# Install Ruby.
-RUN \
-  apt-get update && \
-  apt-get install -y ruby
-
-RUN apt-get update
-RUN apt-get install vim -y
-
-RUN mkdir /home/ubuntu/
-RUN mkdir /home/ubuntu/experiments
-COPY *.py /home/ubuntu/experiments/
-COPY run.sh /home/ubuntu/experiments
-COPY projects.csv /home/ubuntu/experiments
+# copy scripts
+COPY effectiveness/ ./effectiveness
 # copy dir with stats and code for metrics
-RUN mkdir /home/ubuntu/experiments/metrics
-COPY metrics /home/ubuntu/experiments/metrics
+COPY metrics/ ./metrics
+COPY projects.csv ./
 
-# Define working directory.
-WORKDIR /home/ubuntu/experiments
+ENV PYTHONPATH="$PWD:$PYTHONPATH"
+# RUN echo 2 | python3 ./effectiveness/runner.py projects.csv clone && chmod +x get_projects.sh
+COPY get-project.sh for-each-project.sh ./
+RUN echo 'echo 2 | python3 ./effectiveness/runner.py projects.csv && chmod +x run_experiment*.sh' > make_runner.sh && chmod +x make_runner.sh
 
-# Define default command.
+RUN echo 'export JAVA_HOME=$(readlink -f /usr/bin/java | sed "s:bin/java::")' >> ~/.bashrc
+
+# only 3 first projects for testing
+RUN sed -i 4q projects.csv
+
 CMD ["bash"]

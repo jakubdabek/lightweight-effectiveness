@@ -14,40 +14,6 @@ import platform
 import shutil
 
 
-def get_clone_script(project_list, dir=PROJECTS, path='./get_projects.sh'):
-    """Write the script to clone all the projects
-    
-    Arguments
-    -------------
-    - project_list: the list of the project to mutate
-    - dir: the dir that will store the projects
-    - path: the path for the script file
-
-    """
-    try:
-        os.remove(path)
-        os.mkdir(dir)
-    except OSError as e:
-        pass 
-
-    clone = open(path, 'a')
-    clone.write(get_script_head())
-    clone.write('set -e\n')
-    clone.write('cd {}\n'.format(dir))
-    for project in project_list:
-        name = get_project_name(project)
-        clone.write(get_git_clone(project, name))
-        clone.write(move_in(name))
-        clone.write('git fetch --tags\n')
-        clone.write('latestTag=$(git describe --tags `git rev-list --tags --max-count=1`)\n')
-        clone.write('git checkout $latestTag\n')
-        clone.write(mvn_compile())
-        clone.write(mvn_test())
-        clone.write('cd ..\n')
-    clone.write('cd ..\n')
-    clone.close()
-
-
 def get_script(project_list, operator='ALL'):
     """Write the script for the experiment on file
     
@@ -309,9 +275,9 @@ def generate():
                            'EXPERIMENTAL_SWITCH']
     all_operators = default_operators + additional_opeators
 
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 2:
         print("* Wrong usage!")
-        print("* Usage: script.py <csv_file_with_project_list.csv> <clone|run>")
+        print("* Usage: {} <csv_file_with_project_list.csv>".format(sys.argv[0]))
         exit()
 
     print('Which kind of operators you want to run?')
@@ -322,11 +288,10 @@ def generate():
     try:
         mode = int(mode)
     except:
-        print('not value input')
+        print('invalid mode')
         exit()
 
     projects_csv = sys.argv[1]
-    flag = sys.argv[2]
 
     projects_list = pd.read_csv(projects_csv)['project'].unique().tolist()
 
@@ -336,19 +301,16 @@ def generate():
         print('- {}'.format(project))
 
     result_dir = 'results'
-    if flag == 'clone':
-        print('* Generating the file to clone the projects')
-        get_clone_script(projects_list)
-    elif flag == 'run':
-        subprocess.call(['rm', '*.sh'])
-        script = open('./run.sh', 'a')
-        print('* We are going to generate the mutation for the following projects:')
-        if not os.path.exists(result_dir):
-            print("* Creating the directory for the results")
-            os.makedirs(result_dir)
-        else:
-            print("* Deleting old results directory")
-            shutil.rmtree(result_dir)
+
+    print('* We are going to generate the mutation for the following projects:')
+    if not os.path.exists(result_dir):
+        print("* Creating the directory for the results")
+        os.makedirs(result_dir)
+    else:
+        print("* Deleting old results directory")
+        shutil.rmtree(result_dir)
+
+    with open('./run.sh', 'w') as script:
         if mode == 3:
             for operator in all_operators:
                 print('Generating script for {}'.format(operator))
@@ -363,11 +325,3 @@ def generate():
         else:
             print('Generating script for ALL')
             script.write(get_script(projects_list))
-        script.close()
-    else:
-        print('Invalid flag')
-
-
-
-
-
