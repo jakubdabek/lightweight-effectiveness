@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
-from sklearn.externals import joblib
+import joblib
 
 from sklearn.model_selection import train_test_split, RepeatedStratifiedKFold, GridSearchCV, StratifiedKFold, \
     cross_validate
@@ -309,9 +309,9 @@ def plot_roc_curve(estimator, auc):
 def get_scoring():
     """Returns the scores to evaluate the model"""
     return dict(accuracy=make_scorer(accuracy_score),
-                precision=make_scorer(precision_score),
-                recall=make_scorer(recall_score),
-                f1_score=make_scorer(f1_score),
+                precision=make_scorer(precision_score, zero_division=0),
+                recall=make_scorer(recall_score, zero_division=0),
+                f1_score=make_scorer(f1_score, zero_division=0),
                 roc_auc_scorer=make_scorer(roc_auc_score),
                 mean_absolute_error=make_scorer(mean_absolute_error),
                 brier_score=make_scorer(brier_score_loss))

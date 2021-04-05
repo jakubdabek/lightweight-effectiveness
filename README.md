@@ -39,12 +39,12 @@ Please be **aware** that the entire process will take several hours. It is conve
 At the end of the mutation experiment, you have to aggregate the values for the obtained scores with:
 
 ```
-python effectiveness/mutation/calcolate_results.py
+python effectiveness/mutation/calculate_results.py
 ```
 
 After that, the command 
 ```
-python effectiveness/mutation/aggregate_source.py
+python effectiveness/metrics/aggregate_sources.py
 ```
 will merge in an unique frame the several metrics computed with third party tools. Please note that we provide those metrics pre-calculated since the employed tool are research prototypes not yet published!
 

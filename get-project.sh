@@ -15,7 +15,7 @@ git checkout --force "$commit"
 # maven doesn't support java version 1.5 anymore
 sed -i -E 's/(<[^>]*(:?target|source)>)1.5/\11.6/' pom.xml
 # maven repositories must be accessed through https
-sed -i -E 's/http:\/\/(repo[^<]*maven)/https:\/\/\1maven/' pom.xml
+sed -i -E 's/http:\/\/(repo[^<]*maven)/https:\/\/\1/' pom.xml
 
 mvn clean install -DskipTests
 mvn test -Dmaven.test.failure.ignore.true

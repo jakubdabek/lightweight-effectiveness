@@ -1,6 +1,6 @@
 import pandas as pd
-import plotly.plotly as py
-import plotly.graph_objs as go
+import chart_studio.plotly.plotly as py
+import plotly.graph_objects as go
 from effectiveness.settings import *
 py.sign_in('*******', '*******')
 

@@ -25,93 +25,100 @@ def process_results(mutation=METRICS_DIR+'/results.csv', smells=METRICS_DIR+'/te
     :param output: the output csv
 
     """
-    if os.path.exists(mutation) and os.path.exists(smells) and os.path.exists(ck) and os.path.exists(code_smells)\
-            and os.path.exists(readability):
+    needed_files = [mutation, smells, ck, code_smells, readability]
+    missing_files = []
+    for file in needed_files:
+        if not os.path.exists(file):
+            missing_files.append(file)
+
+    if not missing_files:
         print("* Processing {}".format(mutation))
     else:
-        print("* One or more input files are missing\nPlease check the previous steps of the pipeline")
-        exit(0)
+        print(f"* One or more input files are missing: {missing_files}\nPlease check the previous steps of the pipeline")
+        exit(1)
 
     mutation_frame = pd.read_csv(mutation)
     print("* Number of originally executed mutations = {}".format(len(mutation_frame)))
     mutation_frame = mutation_frame.dropna(subset=['mutation', 'line_coverage'])
     print("* Number of successfully mutation = {}".format(len(mutation_frame)))
-    smells_frame = pd.read_csv(smells)
-    ck_frame = pd.read_csv(ck)
+    filtered_frame = mutation_frame
+    if len(mutation_frame) > 0:
+        smells_frame = pd.read_csv(smells)
+        ck_frame = pd.read_csv(ck)
 
-    print("*-------------------------------------------")
+        print("*-------------------------------------------")
 
-    # filter according to the test smells we have
-    all_tests = smells_frame['test-suite'].tolist()
-    filtered_frame = mutation_frame[mutation_frame['test_name'].isin(all_tests)]
-    print('* After smells \t{}'.format(len(filtered_frame)))
+        # filter according to the test smells we have
+        all_tests = smells_frame['test-suite'].tolist()
+        filtered_frame = mutation_frame[mutation_frame['test_name'].isin(all_tests)]
+        print('* After smells \t{}'.format(len(filtered_frame)))
 
-    print("*-------------------------------------------")
+        print("*-------------------------------------------")
 
-    # filter according to the ck metrics we have
-    all_tests = ck_frame['className'].tolist()
-    filtered_frame = filtered_frame[filtered_frame['test_name'].isin(all_tests)]
-    filtered_frame = filtered_frame[filtered_frame['class_name'].isin(all_tests)]
-    print('* After cks \t{}'.format(len(filtered_frame)))
-    prod_readability = pd.read_csv('{}/source_readability.csv'.format(readability))
-    all_classes = prod_readability['tested_class'].tolist()
-    filtered_frame = filtered_frame[filtered_frame['class_name'].isin(all_classes)]
-    print("* After class readability = {}".format(filtered_frame.shape[0]))
-    test_readability = pd.read_csv('{}/test_readability.csv'.format(readability))
-    all_tests = test_readability['tested_class'].tolist()
-    filtered_frame = filtered_frame[filtered_frame['class_name'].isin(all_tests)]
-    print("* After test readability = {}".format(filtered_frame.shape[0]))
+        # filter according to the ck metrics we have
+        all_tests = ck_frame['className'].tolist()
+        filtered_frame = filtered_frame[filtered_frame['test_name'].isin(all_tests)]
+        filtered_frame = filtered_frame[filtered_frame['class_name'].isin(all_tests)]
+        print('* After cks \t{}'.format(len(filtered_frame)))
+        prod_readability = pd.read_csv('{}/source_readability.csv'.format(readability))
+        all_classes = prod_readability['tested_class'].tolist()
+        filtered_frame = filtered_frame[filtered_frame['class_name'].isin(all_classes)]
+        print("* After class readability = {}".format(filtered_frame.shape[0]))
+        test_readability = pd.read_csv('{}/test_readability.csv'.format(readability))
+        all_tests = test_readability['tested_class'].tolist()
+        filtered_frame = filtered_frame[filtered_frame['class_name'].isin(all_tests)]
+        print("* After test readability = {}".format(filtered_frame.shape[0]))
 
-    test_smells_metrics = ['isAssertionRoulette', 'isEagerTest', 'isLazyTest', 'isMysteryGuest',
-                           'isSensitiveEquality', 'isResourceOptimism', 'isForTestersOnly',
-                           'isIndirectTesting']
-    code_ck_metrics = ['LOC', 'HALSTEAD', 'RFC', 'CBO', 'MPC', 'IFC', 'DAC', 'DAC2', 'LCOM1',
-                       'LCOM2', 'LCOM3', 'LCOM4', 'CONNECTIVITY', 'LCOM5', 'COH', 'TCC', 'LCC', 'ICH',
-                       'WMC', 'NOA', 'NOPA', 'NOP', 'McCABE', 'BUSWEIMER']
-    code_smells_metrics = ['csm_CDSBP', 'csm_CC', 'csm_FD', 'csm_Blob', 'csm_SC', 'csm_MC', 'csm_LM', 'csm_FE']
+        test_smells_metrics = ['isAssertionRoulette', 'isEagerTest', 'isLazyTest', 'isMysteryGuest',
+                            'isSensitiveEquality', 'isResourceOptimism', 'isForTestersOnly',
+                            'isIndirectTesting']
+        code_ck_metrics = ['LOC', 'HALSTEAD', 'RFC', 'CBO', 'MPC', 'IFC', 'DAC', 'DAC2', 'LCOM1',
+                        'LCOM2', 'LCOM3', 'LCOM4', 'CONNECTIVITY', 'LCOM5', 'COH', 'TCC', 'LCC', 'ICH',
+                        'WMC', 'NOA', 'NOPA', 'NOP', 'McCABE', 'BUSWEIMER']
+        code_smells_metrics = ['csm_CDSBP', 'csm_CC', 'csm_FD', 'csm_Blob', 'csm_SC', 'csm_MC', 'csm_LM', 'csm_FE']
 
-    print("*-------------------------------------------")
-    print("* Processing test smells:")
-    for smell in test_smells_metrics:
-        print("- Processing {}".format(smell))
-        filtered_frame[smell] = filtered_frame.apply(lambda x: get_smell_value(x, smells_frame, smell), axis=1)
+        print("*-------------------------------------------")
+        print("* Processing test smells:")
+        for smell in test_smells_metrics:
+            print("- Processing {}".format(smell))
+            filtered_frame[smell] = filtered_frame.apply(lambda x: get_smell_value(x, smells_frame, smell), axis=1)
 
-    print("*-------------------------------------------")
-    print("* Processing ck metric for production:")
-    for metric in code_ck_metrics:
-        print("- Processing {}".format(metric))
-        filtered_frame[metric+"_prod"] = filtered_frame.apply(lambda x: get_ck_value(x,
-                                                                                     ck_frame,
-                                                                                     metric),
-                                                              axis=1)
+        print("*-------------------------------------------")
+        print("* Processing ck metric for production:")
+        for metric in code_ck_metrics:
+            print("- Processing {}".format(metric))
+            filtered_frame[metric+"_prod"] = filtered_frame.apply(lambda x: get_ck_value(x,
+                                                                                        ck_frame,
+                                                                                        metric),
+                                                                axis=1)
 
-    print("*-------------------------------------------")
-    print("* Processing ck metric for tests:")
-    for metric in code_ck_metrics:
-        print("- Processing {}".format(metric))
-        filtered_frame[metric+"_test"] = filtered_frame.apply(lambda x: get_ck_value(x,
-                                                                                     ck_frame,
-                                                                                     metric,
-                                                                                     'test_name'),
-                                                              axis=1)
+        print("*-------------------------------------------")
+        print("* Processing ck metric for tests:")
+        for metric in code_ck_metrics:
+            print("- Processing {}".format(metric))
+            filtered_frame[metric+"_test"] = filtered_frame.apply(lambda x: get_ck_value(x,
+                                                                                        ck_frame,
+                                                                                        metric,
+                                                                                        'test_name'),
+                                                                axis=1)
 
-    print("*-------------------------------------------")
-    print("* Processing code smells for productions:")
-    files = glob.glob(code_smells+'/*.csv')
-    code_smell_frame = pd.concat([pd.read_csv(f) for f in files])
-    for metric in code_smells_metrics:
-        print("- Processing {}".format(metric))
-        filtered_frame[metric] = filtered_frame.apply(lambda x: get_production_code_smell(x, code_smell_frame, metric),
-                                                      axis=1)
+        print("*-------------------------------------------")
+        print("* Processing code smells for productions:")
+        files = glob.glob(code_smells+'/*.csv')
+        code_smell_frame = pd.concat([pd.read_csv(f) for f in files])
+        for metric in code_smells_metrics:
+            print("- Processing {}".format(metric))
+            filtered_frame[metric] = filtered_frame.apply(lambda x: get_production_code_smell(x, code_smell_frame, metric),
+                                                        axis=1)
 
-    print("*-------------------------------------------")
-    print("* Processing readability:")
-    print("- Processing production readability")
-    filtered_frame['prod_readability'] = filtered_frame.apply(lambda x: get_readability(x, prod_readability),
-                                                              axis=1)
-    print("- Processing test readability")
-    filtered_frame['test_readability'] = filtered_frame.apply(lambda x: get_readability(x, test_readability),
-                                                              axis=1)
+        print("*-------------------------------------------")
+        print("* Processing readability:")
+        print("- Processing production readability")
+        filtered_frame['prod_readability'] = filtered_frame.apply(lambda x: get_readability(x, prod_readability),
+                                                                axis=1)
+        print("- Processing test readability")
+        filtered_frame['test_readability'] = filtered_frame.apply(lambda x: get_readability(x, test_readability),
+                                                                axis=1)
 
     print("*-------------------------------------------")
     print("* Saving the aggregate in {}".format(output))
