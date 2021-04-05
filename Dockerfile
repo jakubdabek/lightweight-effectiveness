@@ -1,16 +1,15 @@
-FROM ubuntu:20.04
+FROM ubuntu:20.04@sha256:5403064f94b617f7975a19ba4d1a1299fd584397f6ee4393d0e16744ed11aab1
 
 ARG DEBIAN_FRONTEND=noninteractive
 
+COPY apt-install-all-clean.sh ./
 RUN apt update && \
     apt install -y --no-install-recommends locales && \
     locale-gen en_US.UTF-8 && \
-    apt install -y --no-install-recommends \
+    ./apt-install-all-clean.sh \
         openjdk-8-jdk openjdk-11-jdk maven \
-        python3-pip \
-        git ruby vim \
-        && \
-    apt clean && apt autoclean && apt autoremove && rm -rf /var/lib/apt/lists/*
+        python3-pip python3-venv \
+        git subversion ruby vim
 
 RUN update-java-alternatives --set java-1.8.0-openjdk-amd64
 
@@ -28,13 +27,11 @@ COPY metrics/ ./metrics
 COPY projects.csv ./
 
 ENV PYTHONPATH="$PWD:$PYTHONPATH"
-# RUN echo 2 | python3 ./effectiveness/runner.py projects.csv clone && chmod +x get_projects.sh
-COPY get-project.sh for-each-project.sh ./
-RUN echo 'echo 2 | python3 ./effectiveness/runner.py projects.csv && chmod +x run_experiment*.sh' > make_runner.sh && chmod +x make_runner.sh
+COPY get-project.sh for-each-project.sh make-runner.sh ./
 
 RUN echo 'export JAVA_HOME=$(readlink -f /usr/bin/java | sed "s:bin/java::")' >> ~/.bashrc
 
-# only 3 first projects for testing
-RUN sed -i 4q projects.csv
+# only 5 first projects for testing
+RUN sed -i 6q projects.csv
 
 CMD ["bash"]
