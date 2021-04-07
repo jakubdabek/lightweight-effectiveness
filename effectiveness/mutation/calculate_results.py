@@ -1,7 +1,6 @@
 from effectiveness.mutation.mutation_calc import *
 from effectiveness.mutation.pitest_html_parser import *
 from effectiveness.settings import *
-import glob
 import os
 
 __author__ = "Giovanni Grano"
@@ -18,39 +17,43 @@ def calculate_results(default_dir=RESULTS_DIR, clean=True, name='results'):
     :param clean: flag to remove classes with no mutations
     :param name: the name of the output file
     """
-    if not os.path.isdir(default_dir):
+    if not default_dir.is_dir():
         print("No dir to process! You're missing some previous steps")
-        exit(0)
-    result_csv = glob.glob(default_dir+'/res_*.csv')
-    frames = []
-    for project in result_csv:
-        frames.append(pd.read_csv(project))
-    aggregate = pd.concat(frames)
+        exit(1)
+
+    result_csv = list(default_dir.glob('res_*.csv'))
+    print("* Found results:")
+    for res in result_csv:
+        print(" " * 4, res)
+    aggregate = pd.concat([pd.read_csv(project) for project in result_csv])
+
+    current_mutation_results = MUTATION_RESULTS_DIR.with_name(MUTATION_RESULTS_DIR.name + '-' + operator)
+
     aggregate[['module']] = aggregate[['module']].fillna(value='')
     aggregate['mutation'] = aggregate.\
         apply(lambda x: get_mutation_value_html(row=x,
-                                                path_mutation=MUTATION_RESULTS+'-'+operator),
+                                                path_mutation=current_mutation_results),
               axis=1)
     aggregate['no_mutations'] = aggregate.\
         apply(lambda x: get_mutation_value_html(row=x,
                                                 ret_no_mutation=True,
-                                                path_mutation=MUTATION_RESULTS + '-' + operator),
+                                                path_mutation=current_mutation_results),
               axis=1)
     aggregate['line_coverage'] = aggregate.\
         apply(lambda x: get_mutation_value_html(row=x,
                                                 ret_no_mutation=False,
                                                 ret_line_cov=True,
-                                                path_mutation=MUTATION_RESULTS+'-'+operator), axis=1)
+                                                path_mutation=current_mutation_results), axis=1)
 
     if clean:
         print('Rows before the cleaning = {}'.format(aggregate.shape[0]))
         aggregate = aggregate.dropna()
         aggregate = aggregate[aggregate['no_mutations'] != 0]
         print('Rows after the cleaning = {}'.format(aggregate.shape[0]))
-    aggregate.to_csv('{}/{}.csv'.format(METRICS_DIR, name), index=False)
+    aggregate.to_csv((METRICS_DIR / name).with_suffix('.csv'), index=False)
 
 
-def get_mutation_value_html(row, ret_no_mutation=False, ret_line_cov=False, path_mutation=MUTATION_RESULTS):
+def get_mutation_value_html(row, ret_no_mutation=False, ret_line_cov=False, path_mutation=MUTATION_RESULTS_DIR):
     """Functions called into the lambda to calculate the mutation
     The output from pitest needs to be in HTML format
 
@@ -63,14 +66,14 @@ def get_mutation_value_html(row, ret_no_mutation=False, ret_line_cov=False, path
     """
     module_name = row.module
     if module_name == '':
-        path = '{}/'.format(path_mutation) + row.project + '/' + row.test_name + '/**/index.html'
+        path = path_mutation / row.project / row.test_name
     else:
-        path = '{}/'.format(path_mutation) + row.project + '/' + module_name + '-' + row.test_name + '/**/index.html'
-    mutation_file = glob.glob(path, recursive=True)
+        path = path_mutation / row.project / (module_name + '-' + row.test_name)
+    mutation_file = next(path.rglob('index.html'), None)
     if not mutation_file:
         # no file = no mutations
         return None
-    html_parser = PitestHTMLParser(mutation_file[0])
+    html_parser = PitestHTMLParser(mutation_file)
     if ret_line_cov:
         return html_parser.get_line_coverage()
     if ret_no_mutation:
@@ -90,10 +93,10 @@ def get_mutation_value(row, ret_no_mutation=False):
     """
     module_name = row.module
     if module_name == '':
-        path = '{}/'.format(MUTATION_RESULTS) + row.project + '/' + row.test_name + '/**/index.html'
+        path = MUTATION_RESULTS_DIR / row.project / row.test_name
     else:
-        path = '{}/'.format(MUTATION_RESULTS) + row.project + '/' + module_name + '-' + row.test_name + '/**/index.html'
-    mutation_file = glob.glob(path, recursive=True)
+        path = MUTATION_RESULTS_DIR / row.project / (module_name + '-' + row.test_name)
+    mutation_file = path.rglob('index.html')
     # used to reuse the expensive glob search
     if not mutation_file:
         return None

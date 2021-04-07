@@ -31,7 +31,7 @@ COPY get-project.sh for-each-project.sh make-runner.sh ./
 
 RUN echo 'export JAVA_HOME=$(readlink -f /usr/bin/java | sed "s:bin/java::")' >> ~/.bashrc
 
-# only 5 first projects for testing
-RUN sed -i 6q projects.csv
+# only 4 first projects for testing
+RUN sed -i 5q projects.csv
 
 CMD ["bash"]

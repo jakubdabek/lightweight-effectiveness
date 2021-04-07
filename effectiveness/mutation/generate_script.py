@@ -32,28 +32,28 @@ def get_script(project_list, operator='ALL'):
 
     script = open(path, 'a')
     script.write(get_script_head())
-    script.write('rm -rf {} logs\n'.format(MUTATION_RESULTS))
-    script.write('mkdir {} logs\n'.format(MUTATION_RESULTS))
+    script.write('rm -rf {} logs\n'.format(MUTATION_RESULTS_DIR))
+    script.write('mkdir {} logs\n'.format(MUTATION_RESULTS_DIR))
 
     for i, project in enumerate(project_list):
         test_counter = 0
         name = get_project_name(project)
         script.write('echo \'* {} out of {} -> {}\'\n'.format(i+1, len(project_list), name))
-        script.write('mkdir {}/{}\n'.format(MUTATION_RESULTS, name))
+        script.write('mkdir {}/{}\n'.format(MUTATION_RESULTS_DIR, name))
         # move in, compile and test
         script.write('\n\necho \'* Compiling {}\'\n'.format(name))
         script.write(move_in(name))
 
         print('* Processing {}'.format(name))
         # look for submodules
-        project_path = os.path.join(PROJECTS, name)
+        project_path = PROJECTS_DIR / name
         # copy the pom
         script.write(copy_pom())
-        if has_submodules(project_path):
+        sub_modules = get_submodules(project_path)
+        if sub_modules:
             # the project has submodules
-            sub_modules = get_submodules(project_path)
             for module in sub_modules:
-                sub_modules_path = os.path.join(project_path, module)
+                sub_modules_path = project_path / module
                 no_tests = write_mutation_per_unit(path_module=sub_modules_path,
                                                    script=script,
                                                    name=name,
@@ -82,8 +82,8 @@ def rename_results(operator):
     :param operator: the operator
     :return: the command to rename
     """
-    new_name = MUTATION_RESULTS+'-'+operator
-    return 'mv {} {}\n'.format(MUTATION_RESULTS, new_name)
+    new_name = MUTATION_RESULTS_DIR.with_name(MUTATION_RESULTS_DIR.name + '-' + operator)
+    return 'mv {} {}\n'.format(MUTATION_RESULTS_DIR, new_name)
 
 
 def write_mutation_per_unit(path_module, script, name, module_name=None, submodules=None, operator='ALL'):
@@ -134,7 +134,7 @@ def generate_sequence_for_each_project(project, script, pairs, module=None, subm
             script.write('{} 20m mvn org.pitest:pitest-maven:mutationCoverage -X -DoutputFormats=HTML '
                          '--log-file ../../logs/{}.txt\n'.format(timeout_command, test_to_run))
             script.write('mv target/pit-reports target/{}\n'.format(test_to_run))
-            script.write('cp -r target/{} {}/{}\n\n'.format(test_to_run, MUTATION_RESULTS, project))
+            script.write('cp -r target/{} {}/{}\n\n'.format(test_to_run, MUTATION_RESULTS_DIR, project))
             # clean the target directory
             script.write('rm -rf target/{}\n'.format(test_to_run))
         else:
@@ -146,7 +146,7 @@ def generate_sequence_for_each_project(project, script, pairs, module=None, subm
             script.write('mv {}/target/pit-reports {}/target/{}-{}\n'.format(module, module, module, test_to_run))
             for sub_module in submodules:
                 script.write('rm -rf {}/target/pit-reports\n'.format(sub_module))
-            script.write('cp -r {}/target/{}-{} {}/{}\n\n'.format(module, module, test_to_run, MUTATION_RESULTS,
+            script.write('cp -r {}/target/{}-{} {}/{}\n\n'.format(module, module, test_to_run, MUTATION_RESULTS_DIR,
                                                                   project))
             # clean the target directory
             script.write('rm -rf {}/target/{}-{}\n'.format(module, module, test_to_run))
@@ -201,7 +201,7 @@ def move_in(dir_name):
     -------------
     - dir_name: the directory of the project under mutation analysis
     """
-    return 'cd {}/'.format(PROJECTS) + dir_name + '\n'
+    return 'cd {}/'.format(PROJECTS_DIR) + dir_name + '\n'
 
 
 def get_git_clone(project, name):
@@ -260,68 +260,69 @@ def generate():
     """
     Entry point for the elaboration
     """
-    default_operators = ['CONDITIONALS_BOUNDARY',
+    DEFAULT_OPERATORS = ['CONDITIONALS_BOUNDARY',
                          'NEGATE_CONDITIONALS',
                          'MATH',
                          'INCREMENTS',
                          'INVERT_NEGS',
                          'RETURN_VALS',
                          'VOID_METHOD_CALLS']
-    additional_opeators = ['CONSTRUCTOR_CALLS',
+    ADDITIONAL_OPERATORS = ['CONSTRUCTOR_CALLS',
                            'INLINE_CONSTS',
                            'NON_VOID_METHOD_CALLS',
                            'REMOVE_CONDITIONALS',
                            'EXPERIMENTAL_MEMBER_VARIABLE',
                            'EXPERIMENTAL_SWITCH']
-    all_operators = default_operators + additional_opeators
+    ALL_OPERATORS = DEFAULT_OPERATORS + ADDITIONAL_OPERATORS
 
     if len(sys.argv) != 2:
         print("* Wrong usage!")
-        print("* Usage: {} <csv_file_with_project_list.csv>".format(sys.argv[0]))
+        print(f"* Usage: {sys.argv[0]} <csv_file_with_project_list.csv>")
         exit()
 
     print('Which kind of operators you want to run?')
     mode = input('1 = ALL (together)\n'
-                 '2 = DEFAULT (together)\n'
+                 '2 = DEFAULTS (together)\n'
                  '3 = ALL (one at time)\n'
-                 '4 = DEFAULT (one at time)')
+                 '4 = DEFAULTS (one at time)')
     try:
         mode = int(mode)
     except:
         print('invalid mode')
-        exit()
+        exit(1)
 
     projects_csv = sys.argv[1]
-
-    projects_list = pd.read_csv(projects_csv)['project'].unique().tolist()
+    projects = pd.read_csv(projects_csv)['project'].unique().tolist()
 
     print(get_homer())
 
-    for project in projects_list:
+    print('* We are going to generate the mutation for the following projects:')
+    for project in projects:
         print('- {}'.format(project))
 
-    result_dir = 'results'
-
-    print('* We are going to generate the mutation for the following projects:')
-    if not os.path.exists(result_dir):
+    if not RESULTS_DIR.exists():
         print("* Creating the directory for the results")
-        os.makedirs(result_dir)
+        RESULTS_DIR.mkdir()
     else:
-        print("* Deleting old results directory")
-        shutil.rmtree(result_dir)
+        if input("* Delete old results? [Y/N]") == "Y":
+            for file in RESULTS_DIR.glob("*"):
+                if file.is_dir():
+                    shutil.rmtree(file)
+                else:
+                    file.unlink()
 
     with open('./run.sh', 'w') as script:
         if mode == 3:
-            for operator in all_operators:
+            for operator in ALL_OPERATORS:
                 print('Generating script for {}'.format(operator))
-                script.write(get_script(projects_list, operator))
+                script.write(get_script(projects, operator))
         elif mode == 4:
-            for operator in default_operators:
+            for operator in DEFAULT_OPERATORS:
                 print('Generating script for {}'.format(operator))
-                script.write(get_script(projects_list, operator))
+                script.write(get_script(projects, operator))
         elif mode == 2:
             print('Generating script for DEFAULT')
-            script.write(get_script(projects_list, 'DEFAULT'))
+            script.write(get_script(projects, 'DEFAULT'))
         else:
             print('Generating script for ALL')
-            script.write(get_script(projects_list))
+            script.write(get_script(projects))

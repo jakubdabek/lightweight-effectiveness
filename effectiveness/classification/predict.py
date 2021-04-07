@@ -83,9 +83,9 @@ def get_model(coverage):
 def check_false_and_true_positive():
     mode = ['static', 'dynamic']
     for m in mode:
-        print('\n\nAnalysis for {} model'.format(m))
-        path = '{}/predictions-{}.csv'.format(DATA_DIR, m)
-        if os.path.exists(path):
+        print(f'\n\nAnalysis for {m} model')
+        path = DATA_DIR / f'predictions-{m}.csv'
+        if path.exists():
             frame = pd.read_csv(path)
             oracle = frame['y']
             prediction = frame['prediction']

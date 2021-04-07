@@ -3,15 +3,14 @@ __license__ = "MIT"
 __email__ = "grano@ifi.uzh.ch"
 
 import pandas as pd
-import glob
 from effectiveness.settings import *
 
 
-def process_results(mutation=METRICS_DIR+'/results.csv', smells=METRICS_DIR+'/test-smells.csv',
-                    ck=METRICS_DIR+'/ck-metrics.csv',
-                    code_smells=METRICS_DIR+'/code-smells',
-                    readability=METRICS_DIR+'/readability',
-                    output=METRICS_DIR+'/merge.csv'):
+def process_results(mutation=METRICS_DIR / 'results.csv', smells=METRICS_DIR / 'test-smells.csv',
+                    ck=METRICS_DIR / 'ck-metrics.csv',
+                    code_smells=METRICS_DIR / 'code-smells',
+                    readability=METRICS_DIR / 'readability',
+                    output=METRICS_DIR / 'merge.csv'):
     """
     It aggregates into a single csv file all the metrics about mutation, coverage, smells and ck-metrics
     separately computed
@@ -26,15 +25,13 @@ def process_results(mutation=METRICS_DIR+'/results.csv', smells=METRICS_DIR+'/te
 
     """
     needed_files = [mutation, smells, ck, code_smells, readability]
-    missing_files = []
-    for file in needed_files:
-        if not os.path.exists(file):
-            missing_files.append(file)
+    missing_files = [file for file in needed_files if not file.exists()]
 
     if not missing_files:
         print("* Processing {}".format(mutation))
     else:
-        print(f"* One or more input files are missing: {missing_files}\nPlease check the previous steps of the pipeline")
+        print(f"* One or more input files are missing: {missing_files}")
+        print("* Please check the previous steps of the pipeline")
         exit(1)
 
     mutation_frame = pd.read_csv(mutation)
@@ -104,7 +101,7 @@ def process_results(mutation=METRICS_DIR+'/results.csv', smells=METRICS_DIR+'/te
 
         print("*-------------------------------------------")
         print("* Processing code smells for productions:")
-        files = glob.glob(code_smells+'/*.csv')
+        files = code_smells.glob('*.csv')
         code_smell_frame = pd.concat([pd.read_csv(f) for f in files])
         for metric in code_smells_metrics:
             print("- Processing {}".format(metric))
@@ -208,7 +205,7 @@ def get_ck_value(row, ck_frame, metric, key='class_name', verbose=False):
     return aux.iloc[0]
 
 
-def separate_sets(complete_frame=METRICS_DIR+'/merge.csv', delimiter='quartile',
+def separate_sets(complete_frame=METRICS_DIR / 'merge.csv', delimiter='quartile',
                   name_good='good_tests', name_bad='bad_tests'):
     """
     It separates
@@ -227,15 +224,15 @@ def separate_sets(complete_frame=METRICS_DIR+'/merge.csv', delimiter='quartile',
     if delimiter == 'quartile':
         bad_tests = frame[frame['mutation'] <= lower_quantile]
         good_tests = frame[frame['mutation'] >= upper_quantile]
-        bad_tests.to_csv(os.path.join(DATA_DIR, '{}.csv'.format(name_good)), index=False)
-        good_tests.to_csv(os.path.join(DATA_DIR, '{}.csv'.format(name_bad)), index=False)
+        bad_tests.to_csv(DATA_DIR / '{}.csv'.format(name_good), index=False)
+        good_tests.to_csv(DATA_DIR / '{}.csv'.format(name_bad), index=False)
         print("* Good tests quantile = {}".format(len(good_tests)))
         print("* Bad tests quantile = {}".format(len(bad_tests)))
     else:
         bad_tests = frame[frame['mutation'] <= median]
         good_tests = frame[frame['mutation'] > median]
-        bad_tests.to_csv(os.path.join(DATA_DIR, '{}_median.csv'.format(name_good)), index=False)
-        good_tests.to_csv(os.path.join(DATA_DIR, '{}_median.csv'.format(name_bad)), index=False)
+        bad_tests.to_csv(DATA_DIR / '{}_median.csv'.format(name_good), index=False)
+        good_tests.to_csv(DATA_DIR / '{}_median.csv'.format(name_bad), index=False)
         print("* Good tests median = {}".format(len(good_tests)))
         print("* Bad tests median = {}".format(len(bad_tests)))
 
@@ -269,9 +266,9 @@ def count_smells(complete_frame='merge.csv'):
 if __name__ == '__main__':
 
     for operator in ALL_OPERATORS:
-        process_results(mutation=METRICS_DIR+'/results-{}.csv'.format(operator),
-                    output=METRICS_DIR + '/merge-{}.csv'.format(operator))
-        separate_sets(complete_frame=METRICS_DIR+'/merge-{}.csv'.format(operator),
+        process_results(mutation=METRICS_DIR / 'results-{}.csv'.format(operator),
+                    output=METRICS_DIR / 'merge-{}.csv'.format(operator))
+        separate_sets(complete_frame=METRICS_DIR / 'merge-{}.csv'.format(operator),
                       name_good='good_tests-{}'.format(operator),
                       name_bad='bad_tests-{}'.format(operator))
     # process_results()

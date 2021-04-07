@@ -168,6 +168,6 @@ if __name__ == '__main__':
     models = ['dynamic', 'static']
     technique = 'rfc'
     for model in models:
-        path = os.path.join(DATA_DIR, 'features_importance_{}_{}.csv'.format(model, technique))
-        if os.path.exists(path):
+        path = DATA_DIR / 'features_importance_{}_{}.csv'.format(model, technique)
+        if path.exists():
             main(path)

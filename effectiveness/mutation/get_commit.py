@@ -7,14 +7,7 @@ __email__ = "grano@ifi.uzh.ch"
 
 
 def get_last_commit_id(repo_path):
-    """Returns the id of the last commit for a git repository
-
-    Arguments
-    -------------
-    - repo_path: the path for the repository
-
-    """
-    repo = git.Repo(repo_path + '/.git')
+    repo = git.Repo(repo_path, search_parent_directories=True)
     last_commit = repo.head.commit
     return str(last_commit)
 

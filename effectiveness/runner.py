@@ -3,7 +3,7 @@ __email__ = "grano@ifi.uzh.ch"
 __license__ = "MIT"
 import sys
 
-from effectiveness.mutation.generate_script import *
+from effectiveness.mutation.generate_script import generate
 
 
 def main():
