@@ -2,6 +2,7 @@ from pathlib import Path
 import os
 
 POM_NAMESPACE = 'http://maven.apache.org/POM/4.0.0'
+POM_NSMAP = {'pom': POM_NAMESPACE}
 
 MUTATION_TIMEOUT = 20 * 60  # 20m
 
@@ -51,18 +52,45 @@ RESULTS_DIR = BASE_DIR / 'results'
 # the path that contains the mutation results
 MUTATION_RESULTS_DIR = RESULTS_DIR / 'mutation'
 
-DEFAULT_OPERATORS = ['CONDITIONALS_BOUNDARY',
-                     'NEGATE_CONDITIONALS',
-                     'MATH',
-                     'INCREMENTS',
-                     'INVERT_NEGS',
-                     'RETURN_VALS',
-                     'VOID_METHOD_CALLS']
-ADDITIONAL_OPERATORS = ['CONSTRUCTOR_CALLS',
-                        'INLINE_CONSTS',
-                        'NON_VOID_METHOD_CALLS',
-                        'REMOVE_CONDITIONALS',
-                        'EXPERIMENTAL_MEMBER_VARIABLE',
-                        'EXPERIMENTAL_SWITCH']
 
-ALL_OPERATORS = ["ALL", "DEFAULT"] + DEFAULT_OPERATORS + ADDITIONAL_OPERATORS
+# PIT operators (https://pitest.org/quickstart/mutators/)
+OPERATORS = {}
+
+OPERATORS["DEFAULTS"] = [
+    "CONDITIONALS_BOUNDARY",
+    "INCREMENTS",
+    "INVERT_NEGS",
+    "MATH",
+    "NEGATE_CONDITIONALS",
+    "VOID_METHOD_CALLS",
+]
+
+OPERATORS["OLD_DEFAULTS"] = [
+    *OPERATORS["DEFAULTS"],
+    "RETURN_VALS"
+]
+
+OPERATORS["BETTER_RETURNS"] = [
+    "TRUE_RETURNS",
+    "FALSE_RETURNS",
+    "PRIMITIVE_RETURNS",
+    "EMPTY_RETURNS",
+    "NULL_RETURNS",
+]
+
+OPERATORS["NEW_DEFAULTS"] = [
+    *OPERATORS["DEFAULTS"],
+    *OPERATORS["BETTER_RETURNS"],
+]
+
+OPERATORS["ALL"] = [
+    *OPERATORS["NEW_DEFAULTS"],
+    "REMOVE_CONDITIONALS",
+    "EXPERIMENTAL_SWITCH",
+    "INLINE_CONSTS",
+    "CONSTRUCTOR_CALLS",
+    "NON_VOID_METHOD_CALLS",
+    "REMOVE_INCREMENTS",
+]
+
+ALL_OPERATORS = ["ALL", "NEW_DEFAULTS"] + OPERATORS["ALL"]

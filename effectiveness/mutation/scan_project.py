@@ -2,274 +2,206 @@ __author__ = "Giovanni Grano"
 __license__ = "MIT"
 __email__ = "grano@ifi.uzh.ch"
 
-from effectiveness.mutation.utils import *
-from effectiveness.mutation.get_commit import *
+from effectiveness.mutation.project import CutPair, Module
+from effectiveness.mutation.get_commit import get_last_commit_id
+from effectiveness.mutation.utils import ET
 from collections import OrderedDict
 from effectiveness.settings import *
 import subprocess
 import logging
 
-import xml.etree.ElementTree as ET
 import os
 import pandas as pd
+import re
+
+from typing import List, Tuple, Optional
+from pathlib import Path
 
 
-special_cases = {'core': ['/src/', '/test/'],
-                 'guava': ['/src/', '/guava-tests/test/'],
-                 'guava-gwt': ['/src/', '/test/']}
+special_cases = {'core': ('/src/', '/test/'),
+                 'guava': ('/src/', '/guava-tests/test/'),
+                 'guava-gwt': ('/src/', '/test/')}
 
 
-def get_submodules(project_path):
+def get_submodules(project_path: Path):
     """
       Analyzes the structure of the project and detect whether more modules are present
       :param project_path the path of the project
       :return: a list of modules
       """
-    pom_path = project_path + '/pom.xml'
-    assert(os.path.exists(pom_path))
-    pom_file = open(pom_path)
-    pom_content = pom_file.read()
-    pom_content = re.sub(r'\sxmlns="[^"]+"', '', pom_content, count=1)
-    pom_parsed = ET.fromstring(pom_content)
-    modules = pom_parsed.findall('modules')
+    pom_path = project_path / 'pom.xml'
+    assert(pom_path.exists())
+    pom_parsed = ET.parse(pom_path)
+    modules = pom_parsed.find('pom:modules', POM_NSMAP)
     modules_list = []
     if modules:
-        for module in modules[0].findall('module'):
+        for module in modules.findall('pom:module', POM_NSMAP):
             detected_module = module.text
-            if not 'xml' in detected_module:
+            if 'xml' not in detected_module:
                 modules_list.append(detected_module)
-    logging.info('Found {} module:\n'
+    logging.info('Found {} module(s):\n'
                  '{}'.format(len(modules_list), modules_list))
-    pom_file.close()
+
     return modules_list
 
 
-def has_submodules(project_path):
-    """
-    Checks whether the project has submodules
-    :param project_path the path of the project
-    :return: a boolean value
-    """
-    pom_path = project_path + '/pom.xml'
-    assert(os.path.exists(pom_path))
-    pom_file = open(pom_path)
-    pom_content = pom_file.read()
-    pom_content = re.sub(r'\sxmlns="[^"]+"', '', pom_content, count=1)
-    pom_parsed = ET.fromstring(pom_content)
-    modules = pom_parsed.findall('modules')
-    pom_file.close()
-    if modules:
-        true_modules = 0
-        for module in modules[0].findall('module'):
-            detected_module = module.text
-            if not 'xml' in detected_module:
-                true_modules += 1
-        if true_modules > 0:
-            logging.info('Submodules found')
-            return True
-    logging.info('No submodules found')
-    return False
+def search_module_tests(
+    project_name: str,
+    module_path: Path,
+    module_name: str = None,
+    results_dir=RESULTS_DIR,
+) -> List[CutPair]:
+    """Scan a project and save CUTs with their tests to a file"""
 
+    pom = module_path / 'pom.xml'
+    if not pom.exists():
+        return []
 
-def get_test_and_classes(project_path,
-                         project_name,
-                         module_name=None,
-                         save=False,
-                         path_to_save=RESULTS_DIR,
-                         source_directory=None,
-                         test_directory=None):
-    """
-    Scan a project and return the pairs of classes and tests; it might save of not to a file
+    if module_name:
+        print(f"** Scanning {project_name}/{module_name}")
+    else:
+        print(f"** Scanning {project_name}")
 
-    :param project_path: the path for the project
-    :param project_name: the name of the project
-    :param module_name: the name of the module
-    :param save: flag for saving on a file or no (it has to be false while working with submodules)
-    :param path_to_save: the output path
-    :param source_directory: the directory that contains the source code
-    :param test_directory: the directory that contains the test code
-    :return: a list of Projects or False, where it was not possible to detect the pom
-    """
-    name = os.path.basename(project_path)
+    print(f"** Found pom: {pom}")
 
-    loc = os.path.join(project_path, 'pom.xml')
-    if not os.path.exists(loc):
-        convert = subprocess.run('mvn one:convert'.split(),
-                                 cwd=project_path,
-                                 stderr=subprocess.PIPE)
-        if convert.returncode == 0:
-            print('Conversion done')
-        else:
-            print('Conversion failed')
-            return False
-
-    tree = ET.parse(loc)
+    tree = ET.parse(pom)
     root = tree.getroot()
 
-    include_pattern = []
-    exclude_pattern = []
+    include_patterns = []
+    exclude_patterns = []
 
-    source_directory, test_source_directory = get_source_directories(proj_path=project_path,
-                                                                     project_name=project_name,
-                                                                     module_name=module_name)
+    surefire_plugin = root.find(".//pom:plugin/[pom:artifactId='maven-surefire-plugin']", POM_NSMAP)
+    if surefire_plugin is not None:
+        print("** maven-surefire-plugin found")
+        includes = surefire_plugin.findall('.//pom:include', POM_NSMAP)
+        for include in includes:
+            include_patterns.append(include.text)
+        excludes = surefire_plugin.findall('.//pom:exclude', POM_NSMAP)
+        for exclude in excludes:
+            include_patterns.append(exclude.text)
 
-    for plugin in root.findall('*//{http://maven.apache.org/POM/4.0.0}plugin'):
-        flag = False
-        for tag in plugin.getiterator():
-            if tag.tag.strip() == '{http://maven.apache.org/POM/4.0.0}artifactId' and tag.text.strip() \
-                    == 'maven-surefire-plugin':
-                flag = True
-            if flag and tag.tag.strip() == '{http://maven.apache.org/POM/4.0.0}include':
-                include_pattern.append(tag.text)
-            if flag and tag.tag.strip() == '{http://maven.apache.org/POM/4.0.0}exclude':
-                exclude_pattern.append(tag.text)
+    DEFAULT_INCLUDES = [
+        "**/*Test.java",
+        "**/Test*.java",
+        "**/*Tests.java",
+        "**/*TestCase.java",
+    ]
 
-    if not include_pattern and not project_name == 'joda-beans':
-        include_pattern.append('**/*Test.java')
-    elif project_name == 'joda-beans':  # particular case of joda-beans
-        include_pattern.append('**/Test*.java')
-    elif module_name == 'guava-gwt':
-        include_pattern.append('**/Test_gwt.java')
+    from pprint import pprint
+    pprint(include_patterns)
 
-    project = Project(name, include_pattern, exclude_pattern, project_path)
-    # special case for guava
-    if project_name == 'guava' and not project_path.endswith('gwt'):
-        tests_path = os.path.dirname(project_path) + test_source_directory
+    if not include_patterns:
+        include_patterns = DEFAULT_INCLUDES
     else:
-        tests_path = project_path + test_source_directory
-    main_path = project_path + source_directory
-    lst = project.get_tests(tests_path, main_path)
-    if save:
-        if not module_name:
-            csv_out(lst, project_path, project,
-                    project_name=project_name,
-                    output=path_to_save)
-        else:
-            csv_out(lst, os.path.dirname(project_path), project,
-                    project_name=project_name,
-                    output=path_to_save,
-                    module_name=module_name)
-    return lst
+        for i, pat in enumerate(include_patterns):
+            if re.fullmatch(".*/?AllTests.java$", pat):
+                print("*** AllTests.java file found in includes, changing to *Test.java")
+                include_patterns[i] = "**/*Test.java"
+
+    include_patterns = list(set(include_patterns))
+    pprint(include_patterns)
+
+    source_directory, test_source_directory = get_source_directories(
+        module_path,
+        project_name,
+        module_name,
+    )
+
+    module = Module(project_name, module_name, include_patterns, exclude_patterns)
+    # special case for guava
+    if project_name == 'guava' and not module_path.endswith('gwt'):
+        tests_path = module_path.parent / test_source_directory
+    else:
+        tests_path = module_path / test_source_directory
+    main_path = module_path / source_directory
+
+    print("** Main path:", main_path)
+    print("** Tests path:", tests_path)
+
+    test_pairs = list(module.find_cut_pairs(tests_path, main_path))
+
+    cut_pairs_to_csv(test_pairs, module_path, module, results_dir)
+
+    return test_pairs
 
 
-def get_source_directories(proj_path, project_name, module_name=None):
-    """Return the source and test source directory from the pom (or one of the pom)
-
-    Arguments
-    -------------
-    - proj_path: the path for the project
-
-    """
-    look_for = project_name if not module_name else module_name
-    if look_for in special_cases.keys():
-        return special_cases[look_for][0], special_cases[look_for][1]
-
-    pom_paths = []
-    for file in os.listdir(proj_path):
-        if file.startswith('pom'):
-            pom_paths.append(os.path.join(proj_path, file))
-    aux_source = look_for_tag_only_under_build(pom_paths, 'sourceDirectory')
-    aux_test = look_for_tag_only_under_build(pom_paths, 'testSourceDirectory')
-
-    # check che test dir and the source dir
-    test_dir = '/src/test/java/' if aux_test is None else aux_test
-    test_dir = fix_path(test_dir)
-
-    src_dir = '/src/main/' if aux_source is None else aux_source
-    src_dir = fix_path(src_dir)
-
-    return src_dir, test_dir
-
-
-def fix_path(path):
-    """
-    Fixes the path with the slashes in front and at the bottom, if they are not there
-    :param path: the path to check
-    :return: the correct path
-    """
-    correct_path = '/' + path if not path.startswith('/') else path
-    correct_path = correct_path + '/' if not correct_path.endswith('/') else correct_path
-    return correct_path
-
-
-def look_for_tag(list_files, tag):
-    """Looks for a given tag into a set of poms
-
-    Arguments
-    -------------
-    - list_files: the list of poms given
-    - tag: the tag to look for
-
-    """
-    for detected_pom in list_files:
-        tree = ET.parse(detected_pom)
-        root = tree.getroot()
-        pattern = '*//{http://maven.apache.org/POM/4.0.0}' + tag
-        for match in root.findall(pattern):
-            matched = match.text
-            matched = re.sub("[$@*}?].*[$@*}?]", "", matched)
-            return matched
-
-
-def look_for_tag_only_under_build(list_files, tag):
-    """Looks for a given tag into a set of poms. Only looks at the child of the <build> tag
-
-    Arguments
-    -------------
-    - list_files: the list of poms given
-    - tag: the tag to look for
-
-    """
-    for detected_pom in list_files:
-        with open(detected_pom) as f:
-            xmlstring = f.read()
-        xmlstring = re.sub(r'\sxmlns="[^"]+"', '', xmlstring, count=1)
-
-        pom = ET.fromstring(xmlstring)
-        matches = pom.findall("build")
-        if matches:
-            pattern = tag
-            for match in matches[0].findall(pattern):
-                matched = match.text
-                matched = re.sub("[$@*}?].*[$@*}?]", "", matched)
-                return matched
-
-
-def csv_out(lst, project_path, project, project_name, output=RESULTS_DIR, module_name=None):
-    """It saves the output of a project scanning to file
-
-    Arguments
-    -------------
-    - list_files: the list of poms given
-    - tag: the tag to look for
-    - project_path: the path for the main project folder
-    - project: the Project object that contains the list of the pairs
-    - output: the directory for the output
-    - module_name: the eventual name of the module under analysis
-
-    """ 
-    last_commit = get_last_commit_id(project_path)
-    projects = [project_name for x in lst]
-    commit = [last_commit for x in lst]
-    module = [module_name for x in lst]
-    path_test = [x.get_test_path() for x in lst]
-    test_name = [x.get_qualified_test_name() for x in lst]
-    path_src = [x.get_source_path() for x in lst]
-    src_name = [x.get_qualified_source_name() for x in lst]
-    frame = pd.DataFrame(OrderedDict((('project', projects),
-                                      ('module', module),
-                                      ('commit', commit),
+def cut_pairs_to_csv(
+    test_pairs: List[CutPair],
+    module_path: Path,
+    module: Module,
+    output=RESULTS_DIR,
+):
+    last_commit = get_last_commit_id(module_path)
+    project = [module.project_name] * len(test_pairs)
+    module_col = [module.name] * len(test_pairs)
+    path_test = [test_pair.test_path for test_pair in test_pairs]
+    test_name = [test_pair.test_qualified_name for test_pair in test_pairs]
+    path_src = [test_pair.source_path for test_pair in test_pairs]
+    src_name = [test_pair.source_qualified_name for test_pair in test_pairs]
+    frame = pd.DataFrame(OrderedDict((('project', project),
+                                      ('module', module_col),
                                       ('path_test', path_test),
                                       ('test_name', test_name),
                                       ('path_src', path_src),
                                       ('class_name', src_name))))
-    output = '{}/res_'.format(output)+project.get_project_name()+'.csv'
+
+    output = output / f"res_{module.project_name}.csv"
+
+    # output2 = output / project.name / "latest"
+    # output = output / project.name / last_commit
+    # output.mkdir(exist_ok=True, parents=True)
+    # output2.mkdir(exist_ok=True, parents=True)
+
+    # if module.name is None:
+    #     filename = f"tests+{module.project_name}.csv"
+    # else:
+    #     filename = f"tests+{module.project_name}+{module.name}.csv"
+
+    print("** Saving CUTs to", output)
     frame.to_csv(output, index=False)
+    # frame.to_csv(output2 / filename, index=False)
+
+
+def get_source_directories(module_path: Path, project_name: str, module_name: str) -> Tuple[str, str]:
+    """Return the source and test source directory from the pom (or one of the poms)"""
+    try:
+        look_for = project_name if not module_name else module_name
+        return special_cases[look_for]
+    except KeyError:
+        pass
+
+    pom_paths = list(module_path.glob('pom*.xml'))
+
+    override_source = None  # look_for_tag(pom_paths, 'sourceDirectory', children_of="build")
+    override_test_source = None  # look_for_tag(pom_paths, 'testSourceDirectory', children_of="build")
+
+    # check the test dir and the source dir
+    test_dir = 'src/test/java' if override_test_source is None else override_test_source
+    test_dir = test_dir.strip('/')
+
+    src_dir = 'src/main' if override_source is None else override_source
+    src_dir = src_dir.strip('/')
+
+    return src_dir, test_dir
+
+
+def look_for_tag(poms: List[Path], tag: str, children_of: str = None) -> Optional[str]:
+    """Return string content of a tag in one of the supplied poms"""
+    for pom in poms:
+        pom = ET.parse(pom).getroot()
+        if children_of:
+            pattern = f".//pom:{children_of}//pom:{tag}"
+        else:
+            pattern = f".//pom:{tag}"
+        element = pom.find(pattern, POM_NSMAP)
+        if element is not None:
+            return re.sub("[$@*}?].*[$@*}?]", "", element.text)
+    return None
 
 
 if __name__ == '__main__':
     projects = ['cat']
 
     for project in projects:
-        project_path = os.path.join(PROJECTS, project)
-        get_test_and_classes(project_path=project_path, project_name=project, save=True)
+        project_path = PROJECTS_DIR / project
+        search_module_tests(project, project_path)

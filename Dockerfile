@@ -30,6 +30,7 @@ ENV PYTHONPATH="$PWD:$PYTHONPATH"
 COPY get-project.sh for-each-project.sh make-runner.sh ./
 
 RUN echo 'export JAVA_HOME=$(readlink -f /usr/bin/java | sed "s:bin/java::")' >> ~/.bashrc
+RUN echo 'export PYTHONPATH="/root/experiments/:${PYTHONPATH}"' >> ~/.bashrc
 
 # only 4 first projects for testing
 RUN sed -i 5q projects.csv

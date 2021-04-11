@@ -2,9 +2,10 @@ __author__ = "Giovanni Grano"
 __license__ = "MIT"
 __email__ = "grano@ifi.uzh.ch"
 
-from effectiveness.mutation.scan_project import *
-from effectiveness.settings import *
+from effectiveness.mutation.scan_project import search_module_tests, get_submodules, CutPair
+from effectiveness.settings import PROJECTS_DIR, RESULTS_DIR, MUTATION_RESULTS_DIR, MUTATION_PACKAGE, OPERATORS
 
+from typing import List
 import os
 import subprocess
 import pandas as pd
@@ -13,6 +14,18 @@ import re
 import platform
 import shutil
 
+
+def find_test_classes(project):
+    project = get_project_name(project)
+    project_path = PROJECTS_DIR / project
+    submodules = get_submodules(project_path)
+
+    if submodules:
+        for submodule in submodules:
+            submodule_path = project_path / submodule
+            search_module_tests(project, submodule_path, submodule)
+    else:
+        search_module_tests(project, project_path)
 
 def get_script(project_list, operator='ALL'):
     """Write the script for the experiment on file
@@ -83,7 +96,8 @@ def rename_results(operator):
     :return: the command to rename
     """
     new_name = MUTATION_RESULTS_DIR.with_name(MUTATION_RESULTS_DIR.name + '-' + operator)
-    return 'mv {} {}\n'.format(MUTATION_RESULTS_DIR, new_name)
+    new_name.mkdir(exist_ok=True)
+    return 'cp -rf {orig}/* {new} && rmdir {orig}\n'.format(orig=MUTATION_RESULTS_DIR, new=new_name)
 
 
 def write_mutation_per_unit(path_module, script, name, module_name=None, submodules=None, operator='ALL'):
@@ -97,7 +111,8 @@ def write_mutation_per_unit(path_module, script, name, module_name=None, submodu
     :param submodules: the eventual list of submodules
     :return the number of pairs found
     """
-    pairs = get_test_and_classes(project_path=path_module, project_name=name, module_name=module_name, save=True)
+    pairs = search_module_tests(name, path_module, module_name)
+    print(f"** Found {len(pairs)} CUT pairs")
     generate_sequence_for_each_project(name, script, pairs,
                                        module=module_name,
                                        submodules=submodules,
@@ -113,7 +128,7 @@ def calculate_results():
     return "{} {}/calculate_results.py".format(python_command, MUTATION_PACKAGE)
 
 
-def generate_sequence_for_each_project(project, script, pairs, module=None, submodules=None, operator='ALL'):
+def generate_sequence_for_each_project(project, script, pairs: List[CutPair], module=None, submodules=None, operator='ALL'):
     """Generates the code used to run maven for each of the classes in the project
     :param project: the name of the directory of the project
     :param script: the file to write on
@@ -123,8 +138,8 @@ def generate_sequence_for_each_project(project, script, pairs, module=None, subm
     """
     timeout_command = 'gtimeout' if platform.system() == 'Darwin' else 'timeout'
     for pair in pairs:
-        class_to_mutate = pair.get_qualified_source_name()
-        test_to_run = pair.get_qualified_test_name()
+        class_to_mutate = pair.source_qualified_name
+        test_to_run = pair.test_qualified_name
         python_command = 'python' if platform.system() == 'Darwin' else 'python3'
         script.write('\n{} {}/pom_changer.py {} {} {} {}\n'.format(python_command, MUTATION_PACKAGE,
                                                                 project, class_to_mutate, test_to_run, operator))
@@ -260,21 +275,6 @@ def generate():
     """
     Entry point for the elaboration
     """
-    DEFAULT_OPERATORS = ['CONDITIONALS_BOUNDARY',
-                         'NEGATE_CONDITIONALS',
-                         'MATH',
-                         'INCREMENTS',
-                         'INVERT_NEGS',
-                         'RETURN_VALS',
-                         'VOID_METHOD_CALLS']
-    ADDITIONAL_OPERATORS = ['CONSTRUCTOR_CALLS',
-                           'INLINE_CONSTS',
-                           'NON_VOID_METHOD_CALLS',
-                           'REMOVE_CONDITIONALS',
-                           'EXPERIMENTAL_MEMBER_VARIABLE',
-                           'EXPERIMENTAL_SWITCH']
-    ALL_OPERATORS = DEFAULT_OPERATORS + ADDITIONAL_OPERATORS
-
     if len(sys.argv) != 2:
         print("* Wrong usage!")
         print(f"* Usage: {sys.argv[0]} <csv_file_with_project_list.csv>")
@@ -282,9 +282,9 @@ def generate():
 
     print('Which kind of operators you want to run?')
     mode = input('1 = ALL (together)\n'
-                 '2 = DEFAULTS (together)\n'
+                 '2 = NEW_DEFAULTS (together)\n'
                  '3 = ALL (one at time)\n'
-                 '4 = DEFAULTS (one at time)')
+                 '4 = NEW_DEFAULTS (one at time)')
     try:
         mode = int(mode)
     except:
@@ -313,16 +313,16 @@ def generate():
 
     with open('./run.sh', 'w') as script:
         if mode == 3:
-            for operator in ALL_OPERATORS:
+            for operator in OPERATORS["ALL"]:
                 print('Generating script for {}'.format(operator))
                 script.write(get_script(projects, operator))
         elif mode == 4:
-            for operator in DEFAULT_OPERATORS:
+            for operator in OPERATORS["NEW_DEFAULTS"]:
                 print('Generating script for {}'.format(operator))
                 script.write(get_script(projects, operator))
         elif mode == 2:
-            print('Generating script for DEFAULT')
-            script.write(get_script(projects, 'DEFAULT'))
+            print('Generating script for NEW_DEFAULTS')
+            script.write(get_script(projects, 'NEW_DEFAULTS'))
         else:
             print('Generating script for ALL')
             script.write(get_script(projects))

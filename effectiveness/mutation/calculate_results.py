@@ -8,7 +8,7 @@ __license__ = "MIT"
 __email__ = "grano@ifi.uzh.ch"
 
 
-def calculate_results(default_dir=RESULTS_DIR, clean=True, name='results'):
+def calculate_results(operator, default_dir=RESULTS_DIR, clean=True, name='results'):
     """Aggregates all the mutations calculated and add the information about the mutation
 
     Arguments
@@ -22,7 +22,7 @@ def calculate_results(default_dir=RESULTS_DIR, clean=True, name='results'):
         exit(1)
 
     result_csv = list(default_dir.glob('res_*.csv'))
-    print("* Found results:")
+    print(f"* Found results for {operator}:")
     for res in result_csv:
         print(" " * 4, res)
     aggregate = pd.concat([pd.read_csv(project) for project in result_csv])
@@ -120,6 +120,9 @@ def get_number_of_mutations(path):
 
 
 if __name__ == '__main__':
-    for operator in ALL_OPERATORS:
-        calculate_results(name='results-{}'.format(operator))
-    # calculate_results()
+    def main():
+        for operator in ALL_OPERATORS:
+            calculate_results(operator, name='results-{}'.format(operator))
+        # calculate_results()
+
+    main()
