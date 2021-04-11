@@ -97,7 +97,7 @@ def rename_results(operator):
     """
     new_name = MUTATION_RESULTS_DIR.with_name(MUTATION_RESULTS_DIR.name + '-' + operator)
     new_name.mkdir(exist_ok=True)
-    return 'cp -rf {orig}/* {new} && rmdir {orig}\n'.format(orig=MUTATION_RESULTS_DIR, new=new_name)
+    return 'cp -arf {orig}/* {new} && rm -rf {orig}\n'.format(orig=MUTATION_RESULTS_DIR, new=new_name)
 
 
 def write_mutation_per_unit(path_module, script, name, module_name=None, submodules=None, operator='ALL'):
