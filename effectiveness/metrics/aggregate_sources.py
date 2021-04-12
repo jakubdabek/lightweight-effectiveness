@@ -6,11 +6,14 @@ import pandas as pd
 from effectiveness.settings import *
 
 
-def process_results(mutation=METRICS_DIR / 'results.csv', smells=METRICS_DIR / 'test-smells.csv',
-                    ck=METRICS_DIR / 'ck-metrics.csv',
-                    code_smells=METRICS_DIR / 'code-smells',
-                    readability=METRICS_DIR / 'readability',
-                    output=METRICS_DIR / 'merge.csv'):
+def process_results(
+    mutation=METRICS_DIR / 'results.csv',
+    smells=METRICS_DIR / 'test-smells.csv',
+    ck=METRICS_DIR / 'ck-metrics.csv',
+    code_smells=METRICS_DIR / 'code-smells',
+    readability=METRICS_DIR / 'readability',
+    output=METRICS_DIR / 'merge.csv',
+):
     """
     It aggregates into a single csv file all the metrics about mutation, coverage, smells and ck-metrics
     separately computed
@@ -66,38 +69,76 @@ def process_results(mutation=METRICS_DIR / 'results.csv', smells=METRICS_DIR / '
         filtered_frame = filtered_frame[filtered_frame['class_name'].isin(all_tests)]
         print("* After test readability = {}".format(filtered_frame.shape[0]))
 
-        test_smells_metrics = ['isAssertionRoulette', 'isEagerTest', 'isLazyTest', 'isMysteryGuest',
-                            'isSensitiveEquality', 'isResourceOptimism', 'isForTestersOnly',
-                            'isIndirectTesting']
-        code_ck_metrics = ['LOC', 'HALSTEAD', 'RFC', 'CBO', 'MPC', 'IFC', 'DAC', 'DAC2', 'LCOM1',
-                        'LCOM2', 'LCOM3', 'LCOM4', 'CONNECTIVITY', 'LCOM5', 'COH', 'TCC', 'LCC', 'ICH',
-                        'WMC', 'NOA', 'NOPA', 'NOP', 'McCABE', 'BUSWEIMER']
-        code_smells_metrics = ['csm_CDSBP', 'csm_CC', 'csm_FD', 'csm_Blob', 'csm_SC', 'csm_MC', 'csm_LM', 'csm_FE']
+        test_smells_metrics = [
+            'isAssertionRoulette',
+            'isEagerTest',
+            'isLazyTest',
+            'isMysteryGuest',
+            'isSensitiveEquality',
+            'isResourceOptimism',
+            'isForTestersOnly',
+            'isIndirectTesting',
+        ]
+        code_ck_metrics = [
+            'LOC',
+            'HALSTEAD',
+            'RFC',
+            'CBO',
+            'MPC',
+            'IFC',
+            'DAC',
+            'DAC2',
+            'LCOM1',
+            'LCOM2',
+            'LCOM3',
+            'LCOM4',
+            'CONNECTIVITY',
+            'LCOM5',
+            'COH',
+            'TCC',
+            'LCC',
+            'ICH',
+            'WMC',
+            'NOA',
+            'NOPA',
+            'NOP',
+            'McCABE',
+            'BUSWEIMER',
+        ]
+        code_smells_metrics = [
+            'csm_CDSBP',
+            'csm_CC',
+            'csm_FD',
+            'csm_Blob',
+            'csm_SC',
+            'csm_MC',
+            'csm_LM',
+            'csm_FE',
+        ]
 
         print("*-------------------------------------------")
         print("* Processing test smells:")
         for smell in test_smells_metrics:
             print("- Processing {}".format(smell))
-            filtered_frame[smell] = filtered_frame.apply(lambda x: get_smell_value(x, smells_frame, smell), axis=1)
+            filtered_frame[smell] = filtered_frame.apply(
+                lambda x: get_smell_value(x, smells_frame, smell), axis=1
+            )
 
         print("*-------------------------------------------")
         print("* Processing ck metric for production:")
         for metric in code_ck_metrics:
             print("- Processing {}".format(metric))
-            filtered_frame[metric+"_prod"] = filtered_frame.apply(lambda x: get_ck_value(x,
-                                                                                        ck_frame,
-                                                                                        metric),
-                                                                axis=1)
+            filtered_frame[metric + "_prod"] = filtered_frame.apply(
+                lambda x: get_ck_value(x, ck_frame, metric), axis=1
+            )
 
         print("*-------------------------------------------")
         print("* Processing ck metric for tests:")
         for metric in code_ck_metrics:
             print("- Processing {}".format(metric))
-            filtered_frame[metric+"_test"] = filtered_frame.apply(lambda x: get_ck_value(x,
-                                                                                        ck_frame,
-                                                                                        metric,
-                                                                                        'test_name'),
-                                                                axis=1)
+            filtered_frame[metric + "_test"] = filtered_frame.apply(
+                lambda x: get_ck_value(x, ck_frame, metric, 'test_name'), axis=1
+            )
 
         print("*-------------------------------------------")
         print("* Processing code smells for productions:")
@@ -105,17 +146,20 @@ def process_results(mutation=METRICS_DIR / 'results.csv', smells=METRICS_DIR / '
         code_smell_frame = pd.concat([pd.read_csv(f) for f in files])
         for metric in code_smells_metrics:
             print("- Processing {}".format(metric))
-            filtered_frame[metric] = filtered_frame.apply(lambda x: get_production_code_smell(x, code_smell_frame, metric),
-                                                        axis=1)
+            filtered_frame[metric] = filtered_frame.apply(
+                lambda x: get_production_code_smell(x, code_smell_frame, metric), axis=1
+            )
 
         print("*-------------------------------------------")
         print("* Processing readability:")
         print("- Processing production readability")
-        filtered_frame['prod_readability'] = filtered_frame.apply(lambda x: get_readability(x, prod_readability),
-                                                                axis=1)
+        filtered_frame['prod_readability'] = filtered_frame.apply(
+            lambda x: get_readability(x, prod_readability), axis=1
+        )
         print("- Processing test readability")
-        filtered_frame['test_readability'] = filtered_frame.apply(lambda x: get_readability(x, test_readability),
-                                                                axis=1)
+        filtered_frame['test_readability'] = filtered_frame.apply(
+            lambda x: get_readability(x, test_readability), axis=1
+        )
 
     print("*-------------------------------------------")
     print("* Saving the aggregate in {}".format(output))
@@ -205,8 +249,12 @@ def get_ck_value(row, ck_frame, metric, key='class_name', verbose=False):
     return aux.iloc[0]
 
 
-def separate_sets(complete_frame=METRICS_DIR / 'merge.csv', delimiter='quartile',
-                  name_good='good_tests', name_bad='bad_tests'):
+def separate_sets(
+    complete_frame=METRICS_DIR / 'merge.csv',
+    delimiter='quartile',
+    name_good='good_tests',
+    name_bad='bad_tests',
+):
     """
     It separates
     :param complete_frame: the frame to read with the metrics
@@ -245,9 +293,16 @@ def count_smells(complete_frame='merge.csv'):
     :param complete_frame: the csv file to read
     """
     frame = pd.read_csv(complete_frame)
-    test_smells_metrics = ['isAssertionRoulette', 'isEagerTest', 'isLazyTest', 'isMysteryGuest',
-                           'isSensitiveEquality', 'isResourceOptimism', 'isForTestersOnly',
-                           'isIndirectTesting']
+    test_smells_metrics = [
+        'isAssertionRoulette',
+        'isEagerTest',
+        'isLazyTest',
+        'isMysteryGuest',
+        'isSensitiveEquality',
+        'isResourceOptimism',
+        'isForTestersOnly',
+        'isIndirectTesting',
+    ]
     overall = 0
     for metric in test_smells_metrics:
         counts = frame[metric].sum()
@@ -255,7 +310,16 @@ def count_smells(complete_frame='merge.csv'):
         print('{} = {}'.format(metric, counts))
     print('Overall = {}'.format(overall))
 
-    code_smells_metrics = ['csm_CDSBP', 'csm_CC', 'csm_FD', 'csm_Blob', 'csm_SC', 'csm_MC', 'csm_LM', 'csm_FE']
+    code_smells_metrics = [
+        'csm_CDSBP',
+        'csm_CC',
+        'csm_FD',
+        'csm_Blob',
+        'csm_SC',
+        'csm_MC',
+        'csm_LM',
+        'csm_FE',
+    ]
 
     overall = 0
     for metric in code_smells_metrics:
@@ -268,10 +332,15 @@ def count_smells(complete_frame='merge.csv'):
 if __name__ == '__main__':
 
     for operator in ALL_OPERATORS:
-        process_results(mutation=METRICS_DIR / 'results-{}.csv'.format(operator),
-                    output=METRICS_DIR / 'merge-{}.csv'.format(operator))
-        separate_sets(complete_frame=METRICS_DIR / 'merge-{}.csv'.format(operator),
-                      name_good='good_tests-{}'.format(operator),
-                      name_bad='bad_tests-{}'.format(operator))
+        process_results(
+            mutation=METRICS_DIR / f'results-{operator}.csv'.format(operator),
+            output=METRICS_DIR / f'merge-{operator}.csv'.format(operator),
+        )
+        separate_sets(
+            complete_frame=METRICS_DIR / f'merge-{operator}.csv'.format(operator),
+            name_good=f'good_tests-{operator}',
+            name_bad=f'bad_tests-{operator}',
+            delimiter='median',
+        )
     # process_results()
     # separate_sets()

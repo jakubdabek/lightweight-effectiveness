@@ -18,19 +18,21 @@ from typing import List, Tuple, Optional
 from pathlib import Path
 
 
-special_cases = {'core': ('/src/', '/test/'),
-                 'guava': ('/src/', '/guava-tests/test/'),
-                 'guava-gwt': ('/src/', '/test/')}
+special_cases = {
+    'core': ('/src/', '/test/'),
+    'guava': ('/src/', '/guava-tests/test/'),
+    'guava-gwt': ('/src/', '/test/'),
+}
 
 
 def get_submodules(project_path: Path):
     """
-      Analyzes the structure of the project and detect whether more modules are present
-      :param project_path the path of the project
-      :return: a list of modules
-      """
+    Analyzes the structure of the project and detect whether more modules are present
+    :param project_path the path of the project
+    :return: a list of modules
+    """
     pom_path = project_path / 'pom.xml'
-    assert(pom_path.exists())
+    assert pom_path.exists()
     pom_parsed = ET.parse(pom_path)
     modules = pom_parsed.find('pom:modules', POM_NSMAP)
     modules_list = []
@@ -39,8 +41,7 @@ def get_submodules(project_path: Path):
             detected_module = module.text
             if 'xml' not in detected_module:
                 modules_list.append(detected_module)
-    logging.info('Found {} module(s):\n'
-                 '{}'.format(len(modules_list), modules_list))
+    logging.info(f'Found {len(modules_list)} module(s):\n', modules_list)
 
     return modules_list
 
@@ -70,7 +71,9 @@ def search_module_tests(
     include_patterns = []
     exclude_patterns = []
 
-    surefire_plugin = root.find(".//pom:plugin/[pom:artifactId='maven-surefire-plugin']", POM_NSMAP)
+    surefire_plugin = root.find(
+        ".//pom:plugin/[pom:artifactId='maven-surefire-plugin']", POM_NSMAP
+    )
     if surefire_plugin is not None:
         print("** maven-surefire-plugin found")
         includes = surefire_plugin.findall('.//pom:include', POM_NSMAP)
@@ -88,6 +91,7 @@ def search_module_tests(
     ]
 
     from pprint import pprint
+
     pprint(include_patterns)
 
     if not include_patterns:
@@ -138,12 +142,19 @@ def cut_pairs_to_csv(
     test_name = [test_pair.test_qualified_name for test_pair in test_pairs]
     path_src = [test_pair.source_path for test_pair in test_pairs]
     src_name = [test_pair.source_qualified_name for test_pair in test_pairs]
-    frame = pd.DataFrame(OrderedDict((('project', project),
-                                      ('module', module_col),
-                                      ('path_test', path_test),
-                                      ('test_name', test_name),
-                                      ('path_src', path_src),
-                                      ('class_name', src_name))))
+    frame = pd.DataFrame(
+        OrderedDict(
+            (
+                ('project', project),
+                ('module', module_col),
+                ('commit', last_commit),
+                ('path_test', path_test),
+                ('test_name', test_name),
+                ('path_src', path_src),
+                ('class_name', src_name),
+            )
+        )
+    )
 
     output = output / f"res_{module.project_name}.csv"
 
@@ -162,7 +173,9 @@ def cut_pairs_to_csv(
     # frame.to_csv(output2 / filename, index=False)
 
 
-def get_source_directories(module_path: Path, project_name: str, module_name: str) -> Tuple[str, str]:
+def get_source_directories(
+    module_path: Path, project_name: str, module_name: str
+) -> Tuple[str, str]:
     """Return the source and test source directory from the pom (or one of the poms)"""
     try:
         look_for = project_name if not module_name else module_name
@@ -173,7 +186,9 @@ def get_source_directories(module_path: Path, project_name: str, module_name: st
     pom_paths = list(module_path.glob('pom*.xml'))
 
     override_source = None  # look_for_tag(pom_paths, 'sourceDirectory', children_of="build")
-    override_test_source = None  # look_for_tag(pom_paths, 'testSourceDirectory', children_of="build")
+    override_test_source = (
+        None  # look_for_tag(pom_paths, 'testSourceDirectory', children_of="build")
+    )
 
     # check the test dir and the source dir
     test_dir = 'src/test/java' if override_test_source is None else override_test_source

@@ -1,6 +1,7 @@
 from pathlib import Path
 import shutil
 
+
 def clear_dir(path):
     path = Path(path)
     if path.exists():

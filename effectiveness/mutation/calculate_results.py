@@ -1,6 +1,10 @@
-from effectiveness.mutation.mutation_calc import calc_coverage
 from effectiveness.mutation.pitest_html_parser import PitestHTMLParser, ParserOutput
-from effectiveness.settings import RESULTS_DIR, MUTATION_RESULTS_DIR, METRICS_DIR, ALL_OPERATORS
+from effectiveness.settings import (
+    RESULTS_DIR,
+    MUTATION_RESULTS_DIR,
+    METRICS_DIR,
+    ALL_OPERATORS,
+)
 from effectiveness.utils import tuple_if_none
 
 import pandas as pd
@@ -29,14 +33,20 @@ def calculate_results(operator, default_dir=RESULTS_DIR, clean=True, name='resul
     result_csv = list(default_dir.glob('res_*.csv'))
     aggregate = pd.concat([pd.read_csv(project) for project in result_csv])
 
-    current_mutation_results = MUTATION_RESULTS_DIR.with_name(MUTATION_RESULTS_DIR.name + '-' + operator)
+    current_mutation_results = MUTATION_RESULTS_DIR.with_name(
+        MUTATION_RESULTS_DIR.name + '-' + operator
+    )
     if not current_mutation_results.exists():
         print("* No results for", operator)
         return
 
     aggregate[['module']] = aggregate[['module']].fillna(value='')
 
-    report_data = aggregate.apply(lambda row: tuple_if_none(parse_html_report(row, current_mutation_results), 3), axis=1, result_type='expand')
+    report_data = aggregate.apply(
+        lambda row: tuple_if_none(parse_html_report(row, current_mutation_results), 3),
+        axis=1,
+        result_type='expand',
+    )
     aggregate[["total_mutations", "mutation_score", "line_coverage"]] = report_data
 
     if clean:
@@ -58,18 +68,19 @@ def parse_html_report(row, path=MUTATION_RESULTS_DIR) -> Optional[ParserOutput]:
         path = path / row.project / row.test_name
     else:
         path = path / row.project / (module_name + '-' + row.test_name)
-    
+
     # find all reports in root folders of test runs
     report_files = list(path.glob('*/index.html'))
     if not report_files:
         # no file = no mutations
         return None
-    
+
     # use the most recent file (alphabetically last)
     return PitestHTMLParser.parse(report_files[-1])
 
 
 if __name__ == '__main__':
+
     def main():
         for operator in ALL_OPERATORS:
             calculate_results(operator, name='results-{}'.format(operator))
