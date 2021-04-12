@@ -1,8 +1,7 @@
 import pandas as pd
-import chart_studio.plotly.plotly as py
-import plotly.graph_objects as go
+import plotly.plotly as py
+import plotly.graph_objs as go
 from effectiveness.settings import *
-py.sign_in('*******', '*******')
 
 
 def main(frame, models=['dynamic', 'static'], technique='rfc'):
@@ -99,7 +98,7 @@ def plot_fancy_thing(metrics, output_name):
     )
 
     fig = go.Figure(data=data, layout=layout)
-    py.image.save_as(fig, filename='{}/{}.pdf'.format(PLOT_DIR, output_name))
+    py.image.save_as(fig, filename=PLOT_DIR / f'{output_name}.pdf')
 
 
 def plot_feature_importance(metrics, output_name):

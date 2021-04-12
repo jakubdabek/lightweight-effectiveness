@@ -3,5 +3,5 @@ GitPython
 pandas
 scikit-learn
 numpy
-plotly
+plotly<4
 scipy
