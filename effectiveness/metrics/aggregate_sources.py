@@ -221,20 +221,22 @@ def separate_sets(complete_frame=METRICS_DIR / 'merge.csv', delimiter='quartile'
     lower_quantile = quantiles[0.25]
     upper_quantile = quantiles[0.75]
 
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+
     if delimiter == 'quartile':
         bad_tests = frame[frame['mutation'] <= lower_quantile]
         good_tests = frame[frame['mutation'] >= upper_quantile]
-        bad_tests.to_csv(DATA_DIR / '{}.csv'.format(name_good), index=False)
-        good_tests.to_csv(DATA_DIR / '{}.csv'.format(name_bad), index=False)
-        print("* Good tests quantile = {}".format(len(good_tests)))
-        print("* Bad tests quantile = {}".format(len(bad_tests)))
+        bad_tests.to_csv(DATA_DIR / f'{name_good}.csv', index=False)
+        good_tests.to_csv(DATA_DIR / f'{name_bad}.csv', index=False)
+        print(f"* Good tests quantile = {len(good_tests)}")
+        print(f"* Bad tests quantile = {len(bad_tests)}")
     else:
         bad_tests = frame[frame['mutation'] <= median]
         good_tests = frame[frame['mutation'] > median]
-        bad_tests.to_csv(DATA_DIR / '{}_median.csv'.format(name_good), index=False)
-        good_tests.to_csv(DATA_DIR / '{}_median.csv'.format(name_bad), index=False)
-        print("* Good tests median = {}".format(len(good_tests)))
-        print("* Bad tests median = {}".format(len(bad_tests)))
+        bad_tests.to_csv(DATA_DIR / f'{name_good}_median.csv', index=False)
+        good_tests.to_csv(DATA_DIR / f'{name_bad}_median.csv', index=False)
+        print(f"* Good tests median = {len(good_tests)}")
+        print(f"* Bad tests median = {len(bad_tests)}")
 
 
 def count_smells(complete_frame='merge.csv'):

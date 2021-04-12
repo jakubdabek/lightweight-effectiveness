@@ -50,7 +50,9 @@ def calculate_results(operator, default_dir=RESULTS_DIR, clean=True, name='resul
         aggregate = aggregate.dropna()
         aggregate = aggregate[aggregate['no_mutations'] != 0]
         print('Rows after the cleaning = {}'.format(aggregate.shape[0]))
-    aggregate.to_csv((METRICS_DIR / name).with_suffix('.csv'), index=False)
+    filename = (METRICS_DIR / name).with_suffix('.csv')
+    print(f"Saving to {filename}")
+    aggregate.to_csv(filename, index=False)
 
 
 def get_mutation_value_html(row, ret_no_mutation=False, ret_line_cov=False, path_mutation=MUTATION_RESULTS_DIR):
