@@ -9,3 +9,10 @@ def clear_dir(path):
                 shutil.rmtree(file)
             else:
                 file.unlink()
+
+
+def tuple_if_none(value, size):
+    if value is None:
+        return (None,) * size
+    else:
+        return value

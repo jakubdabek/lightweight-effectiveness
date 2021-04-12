@@ -1,6 +1,11 @@
-from effectiveness.mutation.mutation_calc import *
-from effectiveness.mutation.pitest_html_parser import *
-from effectiveness.settings import *
+from effectiveness.mutation.mutation_calc import calc_coverage
+from effectiveness.mutation.pitest_html_parser import PitestHTMLParser, ParserOutput
+from effectiveness.settings import RESULTS_DIR, MUTATION_RESULTS_DIR, METRICS_DIR, ALL_OPERATORS
+from effectiveness.utils import tuple_if_none
+
+import pandas as pd
+
+from typing import Optional
 import os
 
 __author__ = "Giovanni Grano"
@@ -22,103 +27,46 @@ def calculate_results(operator, default_dir=RESULTS_DIR, clean=True, name='resul
         exit(1)
 
     result_csv = list(default_dir.glob('res_*.csv'))
-    print(f"* Found results for {operator}:")
-    for res in result_csv:
-        print(" " * 4, res)
     aggregate = pd.concat([pd.read_csv(project) for project in result_csv])
 
     current_mutation_results = MUTATION_RESULTS_DIR.with_name(MUTATION_RESULTS_DIR.name + '-' + operator)
+    if not current_mutation_results.exists():
+        print("* No results for", operator)
+        return
 
     aggregate[['module']] = aggregate[['module']].fillna(value='')
-    aggregate['mutation'] = aggregate.\
-        apply(lambda x: get_mutation_value_html(row=x,
-                                                path_mutation=current_mutation_results),
-              axis=1)
-    aggregate['no_mutations'] = aggregate.\
-        apply(lambda x: get_mutation_value_html(row=x,
-                                                ret_no_mutation=True,
-                                                path_mutation=current_mutation_results),
-              axis=1)
-    aggregate['line_coverage'] = aggregate.\
-        apply(lambda x: get_mutation_value_html(row=x,
-                                                ret_no_mutation=False,
-                                                ret_line_cov=True,
-                                                path_mutation=current_mutation_results), axis=1)
+
+    report_data = aggregate.apply(lambda row: tuple_if_none(parse_html_report(row, current_mutation_results), 3), axis=1, result_type='expand')
+    aggregate[["total_mutations", "mutation_score", "line_coverage"]] = report_data
 
     if clean:
         print('Rows before the cleaning = {}'.format(aggregate.shape[0]))
+        print('Projects:', aggregate['project'].unique().tolist())
         aggregate = aggregate.dropna()
-        aggregate = aggregate[aggregate['no_mutations'] != 0]
+        aggregate = aggregate[aggregate['total_mutations'] != 0]
         print('Rows after the cleaning = {}'.format(aggregate.shape[0]))
+        print('Projects:', aggregate['project'].unique().tolist())
     filename = (METRICS_DIR / name).with_suffix('.csv')
     print(f"Saving to {filename}")
     aggregate.to_csv(filename, index=False)
 
 
-def get_mutation_value_html(row, ret_no_mutation=False, ret_line_cov=False, path_mutation=MUTATION_RESULTS_DIR):
-    """Functions called into the lambda to calculate the mutation
-    The output from pitest needs to be in HTML format
-
-    Arguments
-    -------------
-    :param row: the row of the of the data frame
-    :param ret_no_mutation: if true, returns the number of mutations; if false, the mutation score
-    :param ret_line_cov: line the parameter above
-    :param path_mutation: the path where the mutation is
-    """
+def parse_html_report(row, path=MUTATION_RESULTS_DIR) -> Optional[ParserOutput]:
+    """Get data about mutation results from PIT HTML report"""
     module_name = row.module
     if module_name == '':
-        path = path_mutation / row.project / row.test_name
+        path = path / row.project / row.test_name
     else:
-        path = path_mutation / row.project / (module_name + '-' + row.test_name)
-    mutation_file = next(path.rglob('index.html'), None)
-    if not mutation_file:
+        path = path / row.project / (module_name + '-' + row.test_name)
+    
+    # find all reports in root folders of test runs
+    report_files = list(path.glob('*/index.html'))
+    if not report_files:
         # no file = no mutations
         return None
-    html_parser = PitestHTMLParser(mutation_file)
-    if ret_line_cov:
-        return html_parser.get_line_coverage()
-    if ret_no_mutation:
-        return html_parser.get_no_mutants()
-    return html_parser.get_mutation_coverage()
-
-
-def get_mutation_value(row, ret_no_mutation=False):
-    """Functions called into the lambda to calculate the mutation
-    The output from pitest needs to be in CSV format
-
-    Arguments
-    -------------
-    - row: the row of the of the data frame
-    - ret_no_mutation: if true, returns the number of mutations; if false, the mutation score
-
-    """
-    module_name = row.module
-    if module_name == '':
-        path = MUTATION_RESULTS_DIR / row.project / row.test_name
-    else:
-        path = MUTATION_RESULTS_DIR / row.project / (module_name + '-' + row.test_name)
-    mutation_file = path.rglob('index.html')
-    # used to reuse the expensive glob search
-    if not mutation_file:
-        return None
-    if ret_no_mutation:
-        return get_number_of_mutations(mutation_file[0])
-    mutation = calc_coverage(mutation_file[0])
-    return mutation
-
-
-def get_number_of_mutations(path):
-    """Returns the number of mutations for the class in the given path
-
-    Arguments
-    -------------
-    - path: the path of the csv file for the current mutation
-
-    """
-    if not path:
-        return 0
-    return get_number_mutation(path)
+    
+    # use the most recent file (alphabetically last)
+    return PitestHTMLParser.parse(report_files[-1])
 
 
 if __name__ == '__main__':
