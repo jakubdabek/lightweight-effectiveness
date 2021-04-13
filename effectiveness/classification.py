@@ -3,7 +3,8 @@ __email__ = "grano@ifi.uzh.ch"
 __license__ = "MIT"
 
 import warnings
-from effectiveness.classification.classifier import *
+import sys
+from effectiveness.classification.classifier import classification
 
 
 def warn(*args, **kwargs):
@@ -25,20 +26,43 @@ def main():
     For the sake of simplicity, you might just de-comment one of the lines of code below.
     """
 
+    suffix = sys.argv[1] if len(sys.argv) > 1 else ''
+
+    if False:
+        # full model
+        N_INNER = 5
+        N_OUTER = 10
+        N_REPEATS = 10
+    else:
+        # faster classification
+        N_INNER = 2
+        N_OUTER = 3
+        N_REPEATS = 2
+
+    def run_classification(algorithm, consider_coverage):
+        classification(
+            consider_coverage=consider_coverage,
+            n_inner=N_INNER,
+            n_outer=N_OUTER,
+            n_repeats=N_REPEATS,
+            algorithm=algorithm,
+            suffix=suffix,
+        )
+
     # De-comment to run only the KNN algorithm
-    # classification(consider_coverage=True, n_inner=5, n_outer=10, algorithm='knn')
-    # classification(consider_coverage=False, n_inner=5, n_outer=10, algorithm='knn')
+    # run_classification("knn", True)
+    # run_classification("knn", False)
 
     # De-comment to run only the SVC algorithm
-    # classification(consider_coverage=True, n_inner=5, n_outer=10, algorithm='svc')
-    # classification(consider_coverage=False, n_inner=5, n_outer=10, algorithm='svc')
+    # run_classification("svc", True)
+    # run_classification("svc", False)
 
     # De-comment to run only the RFC algorithm
-    # classification(consider_coverage=True, n_inner=5, n_outer=10, algorithm='rfc')
-    # classification(consider_coverage=False, n_inner=5, n_outer=10, algorithm='rfc')
+    run_classification("rfc", True)
+    run_classification("rfc", False)
 
-    classification(consider_coverage=True, n_inner=5, n_outer=10)
-    classification(consider_coverage=False, n_inner=5, n_outer=10)
+    # run_classification("all", True)
+    # run_classification("all", False)
 
 
 if __name__ == '__main__':

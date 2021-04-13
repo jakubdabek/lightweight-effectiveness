@@ -3,11 +3,25 @@ import matplotlib
 from matplotlib import pyplot as plt
 import joblib
 
-from sklearn.model_selection import train_test_split, RepeatedStratifiedKFold, GridSearchCV, StratifiedKFold, \
-    cross_validate
+from sklearn.model_selection import (
+    train_test_split,
+    RepeatedStratifiedKFold,
+    GridSearchCV,
+    StratifiedKFold,
+    cross_validate,
+)
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, \
-    mean_absolute_error, make_scorer, brier_score_loss, roc_curve
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    roc_auc_score,
+    mean_absolute_error,
+    make_scorer,
+    brier_score_loss,
+    roc_curve,
+)
 
 from sklearn.preprocessing import OneHotEncoder
 from effectiveness.classification.plots import *
@@ -25,20 +39,20 @@ __license__ = "MIT"
 matplotlib.use('Agg')
 
 
-def import_frame(consider_coverage=True):
+def import_frame(consider_coverage=True, suffix=''):
     """
     Imports all the data needed
     :param consider_coverage: boolean value to take into account or not the coverage
     :return: a tuple with the frame and the metrics
     """
 
-    positive_example = pd.read_csv('{}/good_tests.csv'.format(DATA_DIR))
-    negative_example = pd.read_csv('{}/bad_tests.csv'.format(DATA_DIR))
+    positive_example = pd.read_csv(DATA_DIR / f'good_tests{suffix}.csv')
+    negative_example = pd.read_csv(DATA_DIR / f'bad_tests{suffix}.csv')
     coverage_index = list(positive_example.columns).index('line_coverage')
-    index = coverage_index if consider_coverage else coverage_index+1
+    index = coverage_index if consider_coverage else coverage_index + 1
     metrics = positive_example.columns[index::].tolist()
-    positive_example['y'] = positive_example.apply(lambda x: 1, axis=1)
-    negative_example['y'] = negative_example.apply(lambda x: 0, axis=1)
+    positive_example['y'] = 1
+    negative_example['y'] = 0
 
     frame = shuffle(pd.concat([positive_example, negative_example]))
 
@@ -55,17 +69,24 @@ def plot_learning_curve(train_sizes, train_scores, test_scores):
     plt.figure()
     plt.xlabel("Training examples")
     plt.ylabel("Score")
-    plt.fill_between(train_sizes, train_scores_mean - train_scores_std,
-                     train_scores_mean + train_scores_std, alpha=0.1,
-                     color="r")
-    plt.fill_between(train_sizes, test_scores_mean - test_scores_std,
-                     test_scores_mean + test_scores_std, alpha=0.1, color="g")
-    plt.plot(train_sizes, train_scores_mean, 'o-', color="r",
-             label="Training score")
-    plt.plot(train_sizes, test_scores_mean, 'o-', color="g",
-             label="Cross-validation score")
+    plt.fill_between(
+        train_sizes,
+        train_scores_mean - train_scores_std,
+        train_scores_mean + train_scores_std,
+        alpha=0.1,
+        color="r",
+    )
+    plt.fill_between(
+        train_sizes,
+        test_scores_mean - test_scores_std,
+        test_scores_mean + test_scores_std,
+        alpha=0.1,
+        color="g",
+    )
+    plt.plot(train_sizes, train_scores_mean, 'o-', color="r", label="Training score")
+    plt.plot(train_sizes, test_scores_mean, 'o-', color="g", label="Cross-validation score")
     plt.legend(loc="best")
-    plt.savefig('{}/learning_curve_{}.pdf'.format(DATA_DIR, coverage_suffix), bbox_inches='tight')
+    plt.savefig(DATA_DIR / f'learning_curve_{coverage_suffix}.pdf', bbox_inches='tight')
 
 
 def get_param_grid(algorithm, metrics):
@@ -75,53 +96,56 @@ def get_param_grid(algorithm, metrics):
     :param metrics: the list of metrics
     :return: a dictionary with the parameter grid
     """
+    svc = {
+        'classifier': [SVC(probability=True)],
+        'preprocessing': [StandardScaler(), None],
+        'classifier__gamma': [0.01, 0.1, 1, 10, 100],
+        'classifier__C': [0.01, 0.1, 1, 10, 100],
+    }
+    rfc = {
+        'classifier': [RandomForestClassifier()],
+        'preprocessing': [None],
+        'classifier__n_estimators': [3 * x for x in range(1, 11)],
+        'classifier__max_features': [int((len(metrics) / 10) * x) for x in range(1, 11)],
+        'classifier__max_depth': [5 * x for x in range(1, 11)],
+        'classifier__min_samples_leaf': [2 * x for x in range(1, 11)],
+    }
+    knn = {
+        'classifier': [KNeighborsClassifier()],
+        'preprocessing': [None],
+        'classifier__n_neighbors': [x for x in range(1, 15)],
+        'classifier__weights': ['uniform', 'distance'],
+        'classifier__leaf_size': [5 * x for x in range(1, 11)],
+    }
     if algorithm == 'all':
-        return [{'classifier': [SVC(probability=True)],
-                 'preprocessing': [StandardScaler(), None],
-                 'classifier__gamma': [0.01, 0.1, 1, 10, 100],
-                 'classifier__C': [0.01, 0.1, 1, 10, 100]},
-                {'classifier': [RandomForestClassifier()],
-                 'preprocessing': [None],
-                 'classifier__n_estimators': [3 * x for x in range(1, 11)],
-                 'classifier__max_features': [int((len(metrics) / 10) * x) for x in range(1, 11)],
-                 'classifier__max_depth': [5 * x for x in range(1, 11)],
-                 'classifier__min_samples_leaf': [2 * x for x in range(1, 11)]},
-                {'classifier': [KNeighborsClassifier()],
-                 'preprocessing': [None],
-                 'classifier__n_neighbors': [x for x in range(1, 15)],
-                 'classifier__weights': ['uniform', 'distance'],
-                 'classifier__leaf_size': [5 * x for x in range(1, 11)]}]
+        return [svc, rfc, knn]
     elif algorithm == 'rfc':
-        return [{'classifier': [RandomForestClassifier()],
-                 'preprocessing': [None],
-                 'classifier__n_estimators': [3 * x for x in range(1, 11)],
-                 'classifier__max_features': [int((len(metrics) / 10) * x) for x in range(1, 11)],
-                 'classifier__max_depth': [5 * x for x in range(1, 11)],
-                 'classifier__min_samples_leaf': [2 * x for x in range(1, 11)]}]
+        return [rfc]
     elif algorithm == 'svc':
-        return [{'classifier': [SVC(probability=True)],
-                 'preprocessing': [StandardScaler(), None],
-                 'classifier__gamma': [0.01, 0.1, 1, 10, 100],
-                 'classifier__C': [0.01, 0.1, 1, 10, 100]}]
+        return [svc]
     elif algorithm == 'knn':
-        return [{'classifier': [KNeighborsClassifier()],
-                 'preprocessing': [None],
-                 'classifier__n_neighbors': [x for x in range(1, 15)],
-                 'classifier__weights': ['uniform', 'distance'],
-                 'classifier__leaf_size': [5 * x for x in range(1, 11)]}]
+        return [knn]
     elif algorithm == 'test':
-        return [{'classifier': [KNeighborsClassifier()],
-                 'preprocessing': [None],
-                 'classifier__n_neighbors': [5]},
-                {'classifier': [RandomForestClassifier()],
-                 'preprocessing': [None],
-                 'classifier__n_estimators': [3]}]
+        return [
+            {
+                'classifier': [KNeighborsClassifier()],
+                'preprocessing': [None],
+                'classifier__n_neighbors': [5],
+            },
+            {
+                'classifier': [RandomForestClassifier()],
+                'preprocessing': [None],
+                'classifier__n_estimators': [3],
+            },
+        ]
     else:
         print('Unsupported algorithm selected')
-        exit()
+        exit(1)
 
 
-def classification(consider_coverage=True, n_inner=5, n_outer=10, algorithm='all'):
+def classification(
+    consider_coverage=True, n_inner=5, n_outer=10, n_repeats=10, algorithm='all', suffix=''
+):
     """
     Runs the entire process of classification and evaluation
     :param consider_coverage: to include or not the line coverage as a feature
@@ -137,39 +161,42 @@ def classification(consider_coverage=True, n_inner=5, n_outer=10, algorithm='all
 
     # Import the data
     print('Importing data')
-    frame, metrics = import_frame(consider_coverage)
+    frame, metrics = import_frame(consider_coverage, suffix)
     print('Import: DONE')
 
     X = frame[metrics]
     Y = frame['y']
     print('Running with {} metrics'.format(metrics))
-    pipe = Pipeline([('preprocessing', StandardScaler()),
-                     ('classifier', SVC())])
+    pipe = Pipeline([('preprocessing', StandardScaler()), ('classifier', SVC())])
 
     # Set up the algorithms to tune, train and evaluate
     param_grid = get_param_grid(algorithm, metrics)
 
     inner_cv = StratifiedKFold(n_splits=n_inner, shuffle=True)
-    outer_cv = RepeatedStratifiedKFold(n_splits=n_outer, n_repeats=10)
+    outer_cv = RepeatedStratifiedKFold(n_splits=n_outer, n_repeats=n_repeats)
 
     # inner cross validation
-    grid = GridSearchCV(estimator=pipe,
-                        param_grid=param_grid,
-                        cv=inner_cv,
-                        scoring=get_scoring(),
-                        refit='roc_auc_scorer',
-                        return_train_score=True,
-                        verbose=1,
-                        n_jobs=-1)
+    grid = GridSearchCV(
+        estimator=pipe,
+        param_grid=param_grid,
+        cv=inner_cv,
+        scoring=get_scoring(),
+        refit='roc_auc_scorer',
+        return_train_score=True,
+        verbose=1,
+        n_jobs=-1,
+    )
 
-    results = cross_validate(estimator=grid,
-                             cv=outer_cv,
-                             X=X,
-                             y=Y,
-                             scoring=get_scoring(),
-                             return_train_score=True,
-                             verbose=1,
-                             n_jobs=-1)
+    results = cross_validate(
+        estimator=grid,
+        cv=outer_cv,
+        X=X,
+        y=Y,
+        scoring=get_scoring(),
+        return_train_score=True,
+        verbose=1,
+        n_jobs=-1,
+    )
 
     accuracy = results.get('test_accuracy').mean()
     precision = results.get('test_precision').mean()
@@ -179,42 +206,41 @@ def classification(consider_coverage=True, n_inner=5, n_outer=10, algorithm='all
     mae = results.get('test_mean_absolute_error').mean()
     brier = results.get('test_brier_score').mean()
 
-    print('Performances:\n'
-          'Accuracy\t {:.3f}\n'
-          'Precision\t {:.3f}\n'
-          'Recall\t {:.3f}\n'
-          'F1 Score\t {:.3f}\n'
-          'ROC AUC\t {:.3f}\n'
-          'MAE\t {:.3f}\n'
-          'Brier Score\t {:.3f}\n'.format(accuracy, precision, recall, f1_score, roc_auc, mae, brier))
-
     # save performance metrics
-    metrics_res = pd.DataFrame({'accuracy': [accuracy],
-                                'precision': [precision],
-                                'recall': [recall],
-                                'f1_score': [f1_score],
-                                'ROC-AUC': [roc_auc],
-                                'MAE': [mae],
-                                'Brier': [brier]})
+    metrics_res = pd.DataFrame(
+        {
+            'accuracy': [accuracy],
+            'precision': [precision],
+            'recall': [recall],
+            'f1_score': [f1_score],
+            'ROC-AUC': [roc_auc],
+            'MAE': [mae],
+            'Brier': [brier],
+        }
+    )
 
-    metrics_res.to_csv('{}/evaluation_{}_{}.csv'.format(DATA_DIR, coverage_suffix, algorithm), index=False)
+    print(metrics_res.T)
+
+    metrics_res.to_csv(DATA_DIR / f'evaluation_{coverage_suffix}_{algorithm}.csv', index=False)
 
     grid.fit(X, Y)
     model = grid.best_params_['classifier']
-    print('Best model is:\n{}'.format(model))
-    model_string = open('{}/_model_{}_{}.txt'.format(DATA_DIR, coverage_suffix, algorithm), 'w')
-    model_string.write(str(model))
-    model_string.close()
+    print('Best model is:\n', model)
+    model_path = DATA_DIR / f'_model_{coverage_suffix}_{algorithm}.txt'
+    model_path.write_text(str(model))
 
     if type(model) is RandomForestClassifier:
-        compute_mean_decrease_in_entropy(grid=model,
-                                         n_outer=n_outer,
-                                         metrics=metrics,
-                                         algorithm=algorithm)
+        compute_mean_decrease_in_entropy(
+            grid=model, n_outer=n_outer, metrics=metrics, algorithm=algorithm
+        )
 
     print('Saving the model on the entire set')
     grid.fit(X, Y)
-    joblib.dump(grid.best_estimator_, '{}/model_{}_{}.pkl'.format(DATA_DIR, coverage_suffix, algorithm), compress=1)
+    joblib.dump(
+        grid.best_estimator_,
+        DATA_DIR / f'model_{coverage_suffix}_{algorithm}.pkl',
+        compress=1,
+    )
 
 
 def compute_features_importance(grid, n_outer, metrics, algorithm):
@@ -234,7 +260,9 @@ def compute_features_importance(grid, n_outer, metrics, algorithm):
             features[j].append(elem)
     runs = list(range(n_outer))
     features_importance = pd.DataFrame(features, columns=runs, index=metrics)
-    features_importance.to_csv('{}/features_importance_{}_{}.csv'.format(DATA_DIR, coverage_suffix, algorithm))
+    features_importance.to_csv(
+        DATA_DIR / f'features_importance_{coverage_suffix}_{algorithm}.csv'
+    )
     mean = lambda x: sum(x) / len(x)
     features_average = [mean(x) for x in features]
     s = sorted(zip(map(lambda x: round(x, 3), features_average), metrics), reverse=True)
@@ -249,14 +277,16 @@ def compute_mean_decrease_in_entropy(grid, n_outer, metrics, algorithm):
     :param algorithm: the employed algorithm
     """
     features = [[] for _ in range(len(metrics))]
-    for i in range(0, n_outer):
+    for _ in range(0, n_outer):
         grid.fit(X, Y)
         for j, elem in enumerate(grid.feature_importances_):
             features[j].append(elem)
 
     runs = list(range(n_outer))
     features_importance = pd.DataFrame(features, columns=runs, index=metrics)
-    features_importance.to_csv('{}/features_importance_{}_{}.csv'.format(DATA_DIR, coverage_suffix, algorithm))
+    features_importance.to_csv(
+        DATA_DIR / f'features_importance_{coverage_suffix}_{algorithm}.csv'
+    )
 
 
 def plot_roc_curve(estimator, auc):
@@ -266,11 +296,9 @@ def plot_roc_curve(estimator, auc):
     :param auc: the roc curve
     """
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y,
-                                                        stratify=Y,
-                                                        train_size=0.8,
-                                                        test_size=0.2,
-                                                        shuffle=True)
+    x_train, x_test, y_train, y_test = train_test_split(
+        X, Y, stratify=Y, train_size=0.8, test_size=0.2, shuffle=True
+    )
     one_hot_encoder = OneHotEncoder()
     estimator.fit(x_train, y_train)
     one_hot_encoder.fit(estimator.apply(x_train))
@@ -279,42 +307,44 @@ def plot_roc_curve(estimator, auc):
 
     lw = 2
 
-    trace1 = go.Scatter(x=false_positive,
-                        y=true_positive,
-                        mode='lines',
-                        line=dict(color='darkorange', width=lw),
-                        name='ROC curve (area = %0.2f)' % auc
-                        )
+    trace1 = go.Scatter(
+        x=false_positive,
+        y=true_positive,
+        mode='lines',
+        line=dict(color='darkorange', width=lw),
+        name='ROC curve (area = %0.2f)' % auc,
+    )
 
-    trace2 = go.Scatter(x=[0, 1], y=[0, 1],
-                        mode='lines',
-                        line=dict(color='navy', width=lw, dash='dash'),
-                        showlegend=False)
+    trace2 = go.Scatter(
+        x=[0, 1],
+        y=[0, 1],
+        mode='lines',
+        line=dict(color='navy', width=lw, dash='dash'),
+        showlegend=False,
+    )
 
-    layout = go.Layout(xaxis=dict(title='False Positive Rate',
-                                  color='black'),
-                       yaxis=dict(title='True Positive Rate',
-                                  color='black'),
-                       legend=dict(orientation="h"),
-                       margin=go.Margin(l=80,
-                                        r=50,
-                                        b=50,
-                                        t=20,
-                                        pad=10))
+    layout = go.Layout(
+        xaxis=dict(title='False Positive Rate', color='black'),
+        yaxis=dict(title='True Positive Rate', color='black'),
+        legend=dict(orientation="h"),
+        margin=go.Margin(l=80, r=50, b=50, t=20, pad=10),
+    )
 
     fig = go.Figure(data=[trace1, trace2], layout=layout)
-    py.image.save_as(fig, filename='{}/roc_{}.pdf'.format(DATA_DIR, coverage_suffix))
+    py.image.save_as(fig, filename=DATA_DIR / f'roc_{coverage_suffix}.pdf')
 
 
 def get_scoring():
     """Returns the scores to evaluate the model"""
-    return dict(accuracy=make_scorer(accuracy_score),
-                precision=make_scorer(precision_score, zero_division=0),
-                recall=make_scorer(recall_score, zero_division=0),
-                f1_score=make_scorer(f1_score, zero_division=0),
-                roc_auc_scorer=make_scorer(roc_auc_score),
-                mean_absolute_error=make_scorer(mean_absolute_error),
-                brier_score=make_scorer(brier_score_loss))
+    return dict(
+        accuracy=make_scorer(accuracy_score),
+        precision=make_scorer(precision_score, zero_division=0),
+        recall=make_scorer(recall_score, zero_division=0),
+        f1_score=make_scorer(f1_score, zero_division=0),
+        roc_auc_scorer=make_scorer(roc_auc_score),
+        mean_absolute_error=make_scorer(mean_absolute_error),
+        brier_score=make_scorer(brier_score_loss),
+    )
 
 
 if __name__ == '__main__':
