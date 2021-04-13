@@ -49,8 +49,8 @@ def get_script(project_list, operator='ALL'):
     """
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    script = f'./run_experiment_{operator}.sh'
-    with open(script, 'w') as script:
+    script_path = f'./run_experiment_{operator}.sh'
+    with open(script_path, 'w') as script:
         script.write(get_script_head())
         script.write('rm -rf {} logs\n'.format(MUTATION_RESULTS_DIR))
         script.write('mkdir {} logs\n'.format(MUTATION_RESULTS_DIR))
@@ -99,7 +99,7 @@ def get_script(project_list, operator='ALL'):
             script.write(go_back())
         script.write(rename_results(operator))
 
-    return script
+    return script_path
 
 
 def rename_results(operator):

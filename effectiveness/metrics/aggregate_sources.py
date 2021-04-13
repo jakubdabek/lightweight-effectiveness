@@ -13,7 +13,7 @@ def process_results(
     code_smells=METRICS_DIR / 'code-smells',
     readability=METRICS_DIR / 'readability',
     output=METRICS_DIR / 'merge.csv',
-):
+) -> bool:
     """
     It aggregates into a single csv file all the metrics about mutation, coverage, smells and ck-metrics
     separately computed
@@ -33,13 +33,12 @@ def process_results(
     if not missing_files:
         print("* Processing {}".format(mutation))
     else:
-        print(f"* One or more input files are missing: {missing_files}")
-        print("* Please check the previous steps of the pipeline")
-        exit(1)
+        print(f"* Cannot process results, one or more input files are missing: {missing_files}")
+        return False
 
     mutation_frame = pd.read_csv(mutation)
     print("* Number of originally executed mutations = {}".format(len(mutation_frame)))
-    mutation_frame = mutation_frame.dropna(subset=['mutation', 'line_coverage'])
+    mutation_frame = mutation_frame.dropna(subset=['mutation_score', 'line_coverage'])
     print("* Number of successfully mutation = {}".format(len(mutation_frame)))
     filtered_frame = mutation_frame
     if len(mutation_frame) > 0:
@@ -165,6 +164,8 @@ def process_results(
     print("* Saving the aggregate in {}".format(output))
     filtered_frame.to_csv(output, index=False)
 
+    return True
+
 
 def get_process_metric(row, flag, ck_frame, metric, verbose=False):
     """
@@ -264,23 +265,23 @@ def separate_sets(
     :return:
     """
     frame = pd.read_csv(complete_frame)
-    median = frame.mutation.median()
-    quantiles = frame.mutation.quantile([0.25, 0.75])
+    median = frame["mutation_score"].median()
+    quantiles = frame["mutation_score"].quantile([0.25, 0.75])
     lower_quantile = quantiles[0.25]
     upper_quantile = quantiles[0.75]
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     if delimiter == 'quartile':
-        bad_tests = frame[frame['mutation'] <= lower_quantile]
-        good_tests = frame[frame['mutation'] >= upper_quantile]
+        bad_tests = frame[frame['mutation_score'] <= lower_quantile]
+        good_tests = frame[frame['mutation_score'] >= upper_quantile]
         bad_tests.to_csv(DATA_DIR / f'{name_good}.csv', index=False)
         good_tests.to_csv(DATA_DIR / f'{name_bad}.csv', index=False)
         print(f"* Good tests quantile = {len(good_tests)}")
         print(f"* Bad tests quantile = {len(bad_tests)}")
     else:
-        bad_tests = frame[frame['mutation'] <= median]
-        good_tests = frame[frame['mutation'] > median]
+        bad_tests = frame[frame['mutation_score'] <= median]
+        good_tests = frame[frame['mutation_score'] > median]
         bad_tests.to_csv(DATA_DIR / f'{name_good}_median.csv', index=False)
         good_tests.to_csv(DATA_DIR / f'{name_bad}_median.csv', index=False)
         print(f"* Good tests median = {len(good_tests)}")
@@ -332,10 +333,12 @@ def count_smells(complete_frame='merge.csv'):
 if __name__ == '__main__':
 
     for operator in ALL_OPERATORS:
-        process_results(
+        ok = process_results(
             mutation=METRICS_DIR / f'results-{operator}.csv'.format(operator),
             output=METRICS_DIR / f'merge-{operator}.csv'.format(operator),
         )
+        if not ok:
+            continue
         separate_sets(
             complete_frame=METRICS_DIR / f'merge-{operator}.csv'.format(operator),
             name_good=f'good_tests-{operator}',
