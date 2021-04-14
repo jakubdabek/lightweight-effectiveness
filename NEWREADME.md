@@ -21,5 +21,6 @@ and install them locally
     ```shell
     DOCKER=docker.exe ./run-docker.sh
     ```
-3. Inside the container execute `./run-everything.sh`
+3. Inside the container execute `./run-everything.sh`  
+    **Note:** Second stage, after mutation testing, requires user input, see [`run-no-mutations.sh`](./run-no-mutations.sh)
 4. Results can be found in folder `data`, copy the results out with `docker cp`
