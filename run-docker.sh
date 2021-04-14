@@ -1,3 +1,5 @@
+#!/bin/bash
+
 set -eux
 
 PROJECTS_VOLUME="pbr-lightweight-projects"
