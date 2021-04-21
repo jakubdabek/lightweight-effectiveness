@@ -8,10 +8,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Tuple
 
-__author__ = "Giovanni Grano"
-__license__ = "MIT"
-__email__ = "grano@ifi.uzh.ch"
-
 
 @dataclass
 class Module:

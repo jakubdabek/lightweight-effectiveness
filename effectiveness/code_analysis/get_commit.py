@@ -1,10 +1,6 @@
 import git
 import sys
 
-__author__ = "Giovanni Grano"
-__license__ = "MIT"
-__email__ = "grano@ifi.uzh.ch"
-
 
 def get_last_commit_id(repo_path):
     repo = git.Repo(repo_path, search_parent_directories=True)

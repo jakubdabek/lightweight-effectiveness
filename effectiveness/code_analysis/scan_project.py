@@ -1,22 +1,16 @@
-__author__ = "Giovanni Grano"
-__license__ = "MIT"
-__email__ = "grano@ifi.uzh.ch"
-
-from effectiveness.code_analysis.module import CutPair, Module
-from effectiveness.code_analysis.get_commit import get_last_commit_id
-from effectiveness.mutation.utils import ET
-from collections import OrderedDict
-from effectiveness.settings import *
-import subprocess
 import logging
-
 import os
-import pandas as pd
 import re
-
-from typing import List, Tuple, Optional
+import subprocess
+from collections import OrderedDict
 from pathlib import Path
+from typing import List, Optional, Tuple
 
+import pandas as pd
+from effectiveness.code_analysis.get_commit import get_last_commit_id
+from effectiveness.code_analysis.module import CutPair, Module
+from effectiveness.mutation.utils import ET
+from effectiveness.settings import *
 
 special_cases = {
     'core': ('/src/', '/test/'),

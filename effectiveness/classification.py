@@ -1,9 +1,6 @@
-__author__ = "Giovanni Grano"
-__email__ = "grano@ifi.uzh.ch"
-__license__ = "MIT"
-
-import warnings
 import sys
+import warnings
+
 from effectiveness.classification.classifier import classification
 
 

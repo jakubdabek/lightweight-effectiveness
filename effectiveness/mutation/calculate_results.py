@@ -1,20 +1,10 @@
-from effectiveness.mutation.pitest_html_parser import PitestHTMLParser, ParserOutput
-from effectiveness.settings import (
-    RESULTS_DIR,
-    MUTATION_RESULTS_DIR,
-    METRICS_DIR,
-    ALL_OPERATORS,
-)
-from effectiveness.utils import tuple_if_none
+import os
+from typing import Optional
 
 import pandas as pd
-
-from typing import Optional
-import os
-
-__author__ = "Giovanni Grano"
-__license__ = "MIT"
-__email__ = "grano@ifi.uzh.ch"
+from effectiveness.mutation.pitest_html_parser import ParserOutput, PitestHTMLParser
+from effectiveness.settings import ALL_OPERATORS, METRICS_DIR, MUTATION_RESULTS_DIR, RESULTS_DIR
+from effectiveness.utils import tuple_if_none
 
 
 def calculate_results(operator, default_dir=RESULTS_DIR, clean=True, name='results'):

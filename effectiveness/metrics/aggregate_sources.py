@@ -1,7 +1,3 @@
-__author__ = "Giovanni Grano"
-__license__ = "MIT"
-__email__ = "grano@ifi.uzh.ch"
-
 import pandas as pd
 from effectiveness.settings import *
 

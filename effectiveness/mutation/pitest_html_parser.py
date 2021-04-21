@@ -1,12 +1,8 @@
 from __future__ import division
+
 from html.parser import HTMLParser
-
-__author__ = "Giovanni Grano"
-__license__ = "MIT"
-__email__ = "grano@ifi.uzh.ch"
-
-from typing import NamedTuple
 from pathlib import Path
+from typing import NamedTuple
 
 
 class ParserOutput(NamedTuple):
@@ -28,9 +24,7 @@ class PitestHTMLParser(HTMLParser):
     def parse(cls, file: Path) -> ParserOutput:
         self = cls()
         self.feed(file.read_text())
-        return ParserOutput(
-            self._total_mutants, self._mutation_coverage, self._line_coverage
-        )
+        return ParserOutput(self._total_mutants, self._mutation_coverage, self._line_coverage)
 
     def handle_starttag(self, tag, attrs):
         if tag == "div" and dict(attrs).get('class', '').find("coverage_legend") != -1:

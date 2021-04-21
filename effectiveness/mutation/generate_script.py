@@ -1,28 +1,20 @@
-__author__ = "Giovanni Grano"
-__license__ = "MIT"
-__email__ = "grano@ifi.uzh.ch"
+import os
+import platform
+import re
+import shutil
+import subprocess
+import sys
+from typing import List
 
-from effectiveness.code_analysis.scan_project import (
-    search_module_tests,
-    get_submodules,
-    CutPair,
-)
+import pandas as pd
+from effectiveness.code_analysis.scan_project import CutPair, get_submodules, search_module_tests
 from effectiveness.settings import (
+    MUTATION_PACKAGE,
+    MUTATION_RESULTS_DIR,
+    OPERATORS,
     PROJECTS_DIR,
     RESULTS_DIR,
-    MUTATION_RESULTS_DIR,
-    MUTATION_PACKAGE,
-    OPERATORS,
 )
-
-from typing import List
-import os
-import subprocess
-import pandas as pd
-import sys
-import re
-import platform
-import shutil
 
 
 def find_test_classes(project):
@@ -58,9 +50,7 @@ def get_script(project_list, operator='ALL'):
         for i, project in enumerate(project_list):
             test_counter = 0
             name = get_project_name(project)
-            script.write(
-                'echo \'* {} out of {} -> {}\'\n'.format(i + 1, len(project_list), name)
-            )
+            script.write('echo \'* {} out of {} -> {}\'\n'.format(i + 1, len(project_list), name))
             script.write('mkdir {}/{}\n'.format(MUTATION_RESULTS_DIR, name))
             # move in, compile and test
             script.write('\n\necho \'* Compiling {}\'\n'.format(name))
@@ -108,9 +98,7 @@ def rename_results(operator):
     :param operator: the operator
     :return: the command to rename
     """
-    new_name = MUTATION_RESULTS_DIR.with_name(
-        MUTATION_RESULTS_DIR.name + '-' + operator
-    )
+    new_name = MUTATION_RESULTS_DIR.with_name(MUTATION_RESULTS_DIR.name + '-' + operator)
     new_name.mkdir(exist_ok=True)
     return 'cp -arf {orig}/* {new} && rm -rf {orig}\n'.format(
         orig=MUTATION_RESULTS_DIR, new=new_name
@@ -177,9 +165,7 @@ def generate_sequence_for_each_project(
             )
         )
         script.write(
-            'echo \'* Mutating {} with operator {}\'\n'.format(
-                class_to_mutate, operator
-            )
+            'echo \'* Mutating {} with operator {}\'\n'.format(class_to_mutate, operator)
         )
         if not module:
             # the project has no modules
@@ -189,9 +175,7 @@ def generate_sequence_for_each_project(
             )
             script.write('mv target/pit-reports target/{}\n'.format(test_to_run))
             script.write(
-                'cp -r target/{} {}/{}\n\n'.format(
-                    test_to_run, MUTATION_RESULTS_DIR, project
-                )
+                'cp -r target/{} {}/{}\n\n'.format(test_to_run, MUTATION_RESULTS_DIR, project)
             )
             # clean the target directory
             script.write('rm -rf target/{}\n'.format(test_to_run))
@@ -199,9 +183,7 @@ def generate_sequence_for_each_project(
             # the project has modules
             script.write(
                 '{} 20m mvn org.pitest:pitest-maven:mutationCoverage -X -DoutputFormats=HTML '
-                '--log-file ../../logs/{}-{}.txt\n'.format(
-                    timeout_command, module, test_to_run
-                )
+                '--log-file ../../logs/{}-{}.txt\n'.format(timeout_command, module, test_to_run)
             )
             # the pattern for saving the directory when there are modules is the following:
             # module_name-fully.qualified.name
@@ -241,9 +223,7 @@ def copy_pom(new_name='cached_pom.xml'):
     -------------
     - new_name: new name for the pom
     """
-    return_string = '\necho \'* Caching original pom\'\n' 'cp pom.xml {}\n'.format(
-        new_name
-    )
+    return_string = '\necho \'* Caching original pom\'\n' 'cp pom.xml {}\n'.format(new_name)
     return return_string
 
 

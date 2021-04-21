@@ -1,10 +1,6 @@
 import sys
 import os
 
-__author__ = "Giovanni Grano"
-__license__ = "MIT"
-__email__ = "grano@ifi.uzh.ch"
-
 
 def get_pitest_maven_skeleton(class_to_mutate, test_to_run, mutator='ALL', threads=4):
     """Returns the string to inject into the pom to run the mutation analysis
@@ -66,7 +62,7 @@ def generate_new_pom(project, class_to_mutate, test_to_run, mutator):
     try:
         os.remove('pom.xml')
     except OSError as e:
-        pass 
+        pass
 
     build_flag = False
     written_flag = False

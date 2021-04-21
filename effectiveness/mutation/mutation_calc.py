@@ -1,10 +1,8 @@
 from __future__ import division
-import pandas as pd
+
 import sys
 
-__author__ = "Giovanni Grano"
-__license__ = "MIT"
-__email__ = "grano@ifi.uzh.ch"
+import pandas as pd
 
 
 def calc_coverage(csv_file):
@@ -13,7 +11,9 @@ def calc_coverage(csv_file):
     -------------
     - csv_file: the path of the csv file storing the result of the mutation
     """
-    frame = pd.read_csv(csv_file, names=['class', 'name', 'mutation', 'operation', 'line', 'killed', 'test'])
+    frame = pd.read_csv(
+        csv_file, names=['class', 'name', 'mutation', 'operation', 'line', 'killed', 'test']
+    )
     mutations = len(frame)
     if mutations == 0:
         return None
@@ -22,7 +22,7 @@ def calc_coverage(csv_file):
         killed = frame.killed.value_counts()['KILLED']
     else:
         return 0
-    return killed/mutations
+    return killed / mutations
 
 
 def get_number_mutation(csv_file):
@@ -31,7 +31,9 @@ def get_number_mutation(csv_file):
     -------------
     - csv_file: the path of the csv file storing the result of the mutation
     """
-    frame = pd.read_csv(csv_file, names=['class', 'name', 'mutation', 'operation', 'line', 'killed', 'test'])
+    frame = pd.read_csv(
+        csv_file, names=['class', 'name', 'mutation', 'operation', 'line', 'killed', 'test']
+    )
     return len(frame)
 
 
