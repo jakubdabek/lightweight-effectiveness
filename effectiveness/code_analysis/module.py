@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import os
 import fnmatch
-import re
 import glob
-
-from pathlib import Path
+import os
+import re
 from dataclasses import dataclass
-from typing import List, Tuple, Iterable
+from pathlib import Path
+from typing import Iterable, List, Tuple
 
 __author__ = "Giovanni Grano"
 __license__ = "MIT"

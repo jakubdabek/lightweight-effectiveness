@@ -2,8 +2,8 @@ __author__ = "Giovanni Grano"
 __license__ = "MIT"
 __email__ = "grano@ifi.uzh.ch"
 
-from effectiveness.mutation.project import CutPair, Module
-from effectiveness.mutation.get_commit import get_last_commit_id
+from effectiveness.code_analysis.module import CutPair, Module
+from effectiveness.code_analysis.get_commit import get_last_commit_id
 from effectiveness.mutation.utils import ET
 from collections import OrderedDict
 from effectiveness.settings import *

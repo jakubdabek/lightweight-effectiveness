@@ -2,7 +2,7 @@ __author__ = "Giovanni Grano"
 __license__ = "MIT"
 __email__ = "grano@ifi.uzh.ch"
 
-from effectiveness.mutation.scan_project import (
+from effectiveness.code_analysis.scan_project import (
     search_module_tests,
     get_submodules,
     CutPair,
