@@ -27,7 +27,7 @@ COPY metrics/ ./metrics
 COPY projects.csv ./
 
 ENV PYTHONPATH="$PWD:$PYTHONPATH"
-COPY get-project.sh for-each-project.sh make-runner.sh run-everything.sh run-no-mutations.sh ./
+COPY get-project.sh for-each-project.sh make-runner.sh run-everything.sh run-mutations.sh run-no-mutations.sh ./
 
 RUN echo 'export JAVA_HOME=$(readlink -f /usr/bin/java | sed "s:bin/java::")' >> ~/.bashrc
 RUN echo 'export PYTHONPATH="/root/experiments/:${PYTHONPATH}"' >> ~/.bashrc
