@@ -9,8 +9,8 @@ from typing import List, Optional, Tuple
 import pandas as pd
 from effectiveness.code_analysis.get_commit import get_last_commit_id
 from effectiveness.code_analysis.pom_module import CutPair, PomModule
-from effectiveness.mutation.utils import ET
-from effectiveness.settings import POM_NSMAP, PROJECTS_DIR, RESULTS_DIR
+from effectiveness.pom_utils import ET, POM_NSMAP
+from effectiveness.settings import PROJECTS_DIR, RESULTS_DIR
 
 special_cases = {
     'core': ('/src/', '/test/'),

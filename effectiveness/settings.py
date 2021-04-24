@@ -1,9 +1,6 @@
 from pathlib import Path
 import os
 
-POM_NAMESPACE = 'http://maven.apache.org/POM/4.0.0'
-POM_NSMAP = {'pom': POM_NAMESPACE}
-
 MUTATION_TIMEOUT = 20 * 60  # 20m
 
 # the base dir of the project
