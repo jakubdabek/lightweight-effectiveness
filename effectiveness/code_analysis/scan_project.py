@@ -8,9 +8,9 @@ from typing import List, Optional, Tuple
 
 import pandas as pd
 from effectiveness.code_analysis.get_commit import get_last_commit_id
-from effectiveness.code_analysis.module import CutPair, Module
+from effectiveness.code_analysis.pom_module import CutPair, PomModule
 from effectiveness.mutation.utils import ET
-from effectiveness.settings import *
+from effectiveness.settings import POM_NSMAP, PROJECTS_DIR, RESULTS_DIR
 
 special_cases = {
     'core': ('/src/', '/test/'),
@@ -19,11 +19,12 @@ special_cases = {
 }
 
 
-def get_submodules(project_path: Path):
+def get_submodules(project_path: Path) -> List[str]:
     """
     Analyzes the structure of the project and detect whether more modules are present
-    :param project_path the path of the project
-    :return: a list of modules
+
+    Returns:
+    list of submodules
     """
     pom_path = project_path / 'pom.xml'
     assert pom_path.exists()
@@ -105,7 +106,7 @@ def search_module_tests(
         module_name,
     )
 
-    module = Module(project_name, module_name, include_patterns, exclude_patterns)
+    module = PomModule(project_name, module_name, include_patterns, exclude_patterns)
     # special case for guava
     if project_name == 'guava' and not module_path.endswith('gwt'):
         tests_path = module_path.parent / test_source_directory
@@ -126,7 +127,7 @@ def search_module_tests(
 def cut_pairs_to_csv(
     test_pairs: List[CutPair],
     module_path: Path,
-    module: Module,
+    module: PomModule,
     output=RESULTS_DIR,
 ):
     last_commit = get_last_commit_id(module_path)
@@ -179,9 +180,9 @@ def get_source_directories(
 
     pom_paths = list(module_path.glob('pom*.xml'))
 
-    override_source = None  # look_for_tag(pom_paths, 'sourceDirectory', children_of="build")
-    override_test_source = (
-        None  # look_for_tag(pom_paths, 'testSourceDirectory', children_of="build")
+    override_source = look_for_tag(pom_paths, 'sourceDirectory', direct_children_of="build")
+    override_test_source = look_for_tag(
+        pom_paths, 'testSourceDirectory', direct_children_of="build"
     )
 
     # check the test dir and the source dir
@@ -194,12 +195,16 @@ def get_source_directories(
     return src_dir, test_dir
 
 
-def look_for_tag(poms: List[Path], tag: str, children_of: str = None) -> Optional[str]:
+def look_for_tag(
+    poms: List[Path], tag: str, *, children_of: str = None, direct_children_of: str = None
+) -> Optional[str]:
     """Return string content of a tag in one of the supplied poms"""
     for pom in poms:
         pom = ET.parse(pom).getroot()
         if children_of:
             pattern = f".//pom:{children_of}//pom:{tag}"
+        elif direct_children_of:
+            pattern = f".//pom:{direct_children_of}/pom:{tag}"
         else:
             pattern = f".//pom:{tag}"
         element = pom.find(pattern, POM_NSMAP)

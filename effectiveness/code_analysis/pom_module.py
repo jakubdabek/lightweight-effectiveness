@@ -10,7 +10,7 @@ from typing import Iterable, List, Tuple
 
 
 @dataclass
-class Module:
+class PomModule:
     project_name: str
     name: str
     include_patterns: List[str]
