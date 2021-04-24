@@ -4,6 +4,7 @@ import os
 MUTATION_TIMEOUT = 20 * 60  # 20m
 
 # the base dir of the project
+# all paths derived from this one will be absolute
 BASE_DIR = Path(__file__).absolute().parent.parent
 
 RUBY = '/Users/grano/.rvm/rubies/ruby-2.2.1/bin'
@@ -49,6 +50,7 @@ RESULTS_DIR = BASE_DIR / 'results'
 # the path that contains the mutation results
 MUTATION_RESULTS_DIR = RESULTS_DIR / 'mutation'
 
+PIT_VERSION = "1.3.2"
 
 # PIT operators (https://pitest.org/quickstart/mutators/)
 OPERATORS = {}

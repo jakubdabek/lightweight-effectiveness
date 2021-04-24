@@ -1,117 +1,45 @@
-import sys
 import os
+import sys
+from pathlib import Path
+
+from effectiveness.pom_utils import ET, POM_NSMAP, indent, obj_to_xml
+from effectiveness.settings import PIT_VERSION
 
 
-def get_pitest_maven_skeleton(class_to_mutate, test_to_run, mutator='ALL', threads=4):
-    """Returns the string to inject into the pom to run the mutation analysis
+def pitest_plugin_element(class_to_mutate, test_to_run, mutator='ALL', threads=4) -> ET.Element:
+    plugin = ET.Element('plugin')
+    plugin_elements = {
+        "groupId": "org.pitest",
+        "artifactId": "pitest-maven",
+        "version": PIT_VERSION,
+        "configuration": {
+            "failWhenNoMutations": "false",
+            "targetClasses": dict(param=class_to_mutate),
+            "targetTests": dict(param=test_to_run),
+            "mutators": dict(mutator=mutator),
+            "threads": threads,
+            "avoidCallsTo": [
+                dict(avoidCallsTo="java.util.logging"),
+                dict(avoidCallsTo="org.apache.log4j"),
+                dict(avoidCallsTo="org.slf4j"),
+                dict(avoidCallsTo="org.apache.commons.logging"),
+            ],
+        },
+    }
 
-    Arguments
-    -------------
-    - class_to_mutate: the name of the class
-    - test_to_run: the name of the test to run against the mutation
-    - mutator: the mutator to use
-    - threads: the number of tests to use
-
-    """
-    string_to_inject = """
-    <plugin>
-    <groupId>org.pitest</groupId>
-    <artifactId>pitest-maven</artifactId>
-    <version>1.3.2</version>
-    <configuration>
-    <failWhenNoMutations>false</failWhenNoMutations>
-    <targetClasses>
-    <param>
-    """+class_to_mutate+"""
-    </param>
-    </targetClasses>
-    <targetTests>
-    <param>
-    """+test_to_run+"""
-    </param>
-    </targetTests>
-    <mutators>
-    <mutator>
-    """+mutator+"""
-    </mutator>
-    </mutators>
-    <avoidCallsTo>
-    <threads>"""+str(threads)+"""</threads>
-    <avoidCallsTo>java.util.logging</avoidCallsTo>
-    <avoidCallsTo>org.apache.log4j</avoidCallsTo>
-    <avoidCallsTo>org.slf4j</avoidCallsTo>
-    <avoidCallsTo>org.apache.commons.logging</avoidCallsTo>
-    </avoidCallsTo>
-    </configuration>
-    </plugin>
-    """
-    return string_to_inject
+    return obj_to_xml(plugin, plugin_elements)
 
 
-def generate_new_pom(project, class_to_mutate, test_to_run, mutator):
-    """Generates a new pom, reading the cached one in cached_pom.xml, adding the
-    pitest maven goal
-
-    Arguments
-    -------------
-    - project: the path for the project
-    - class_to_mutate: the fully qualified name for the class to mutate
-    - test_to_run: the name for the test to run against the mutation
-
-    """
-    try:
-        os.remove('pom.xml')
-    except OSError as e:
-        pass
-
-    build_flag = False
-    written_flag = False
-    aux_pom = open('cached_pom.xml', 'r')
-
-    with open('pom.xml', 'w') as new_pom:
-        for line in aux_pom.readlines():
-            if build_flag and line.strip().startswith('<plugins>'):
-                write_line(new_pom, line)
-                write_pitest_pom(new_pom, class_to_mutate, test_to_run, mutator)
-                build_flag = False
-                written_flag = True
-                continue
-            if line.strip().startswith('<build>') and not written_flag:
-                build_flag = True
-            write_line(new_pom, line)
-
-
-def write_line(write, line):
-    """Writes a line from the cached pom to the new one
-
-    Arguments
-    -------------
-    - write: output file
-    - line: line to write to the file
-
-    """
-    write.write(line)
-
-
-def write_pitest_pom(write, class_to_mutate, test_to_run, mutator):
-    """Writes the injected pitest goal into the new pom
-
-    Arguments
-    -------------
-    - write: output file
-    - class_to_mutate: the fully qualified name for the class to mutate
-    - test_to_run: the name for the test to run against the mutation
-
-    """
-    write.write(get_pitest_maven_skeleton(class_to_mutate, test_to_run, mutator=mutator))
+def add_pitest_plugin(
+    pom: Path, target: Path, class_to_mutate: str, test_to_run: str, mutator='ALL'
+):
+    pom = ET.parse(pom)
+    plugins = pom.find(".//pom:build//pom:plugins", POM_NSMAP)
+    plugins.append(pitest_plugin_element(class_to_mutate, test_to_run, mutator))
+    indent(pom, space=" " * 4)
+    pom.write(target)
 
 
 if __name__ == '__main__':
-    project_name = sys.argv[1]
-    class_to_mutate = sys.argv[2]
-    test_to_run = sys.argv[3]
-    operator = sys.argv[4]
-    generate_new_pom(project=project_name,
-                     class_to_mutate=class_to_mutate,
-                     test_to_run=test_to_run,
-                     mutator=operator)
+    original_pom, new_pom, class_to_mutate, test_to_run, operator = sys.argv[1:]
+    add_pitest_plugin(original_pom, new_pom, class_to_mutate, test_to_run, operator)

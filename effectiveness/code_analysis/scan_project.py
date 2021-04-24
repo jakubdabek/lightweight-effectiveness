@@ -41,6 +41,17 @@ def get_submodules(project_path: Path) -> List[str]:
     return modules_list
 
 
+def search_project_tests(project_path: Path, results_dir=RESULTS_DIR):
+    submodules = get_submodules(project_path)
+
+    if submodules:
+        for submodule in submodules:
+            submodule_path = project_path / submodule
+            search_module_tests(project_path.name, submodule_path, submodule, results_dir=results_dir)
+    else:
+        search_module_tests(project_path.name, project_path, results_dir=results_dir)
+
+
 def search_module_tests(
     project_name: str,
     module_path: Path,
@@ -117,6 +128,7 @@ def search_module_tests(
     print("** Main path:", main_path)
     print("** Tests path:", tests_path)
 
+    # TODO: remove duplicate test entries
     test_pairs = list(module.find_cut_pairs(tests_path, main_path))
 
     cut_pairs_to_csv(test_pairs, module_path, module, results_dir)
@@ -151,21 +163,30 @@ def cut_pairs_to_csv(
         )
     )
 
-    output = output / f"res_{module.project_name}.csv"
+    old_output = output / f"res_{module.name}.csv"
 
-    # output2 = output / project.name / "latest"
-    # output = output / project.name / last_commit
-    # output.mkdir(exist_ok=True, parents=True)
-    # output2.mkdir(exist_ok=True, parents=True)
+    output2 = output / module.project_name / "latest"
+    output = output / module.project_name / last_commit
+    output.mkdir(exist_ok=True, parents=True)
+    output2.mkdir(exist_ok=True, parents=True)
 
-    # if module.name is None:
-    #     filename = f"tests+{module.project_name}.csv"
-    # else:
-    #     filename = f"tests+{module.project_name}+{module.name}.csv"
+    # second parentheses empty if no submodule
+    filename = f"tests({module.project_name})({module.name or ''}).csv"
 
     print("** Saving CUTs to", output)
-    frame.to_csv(output, index=False)
-    # frame.to_csv(output2 / filename, index=False)
+    frame.to_csv(old_output, index=False)
+    frame.to_csv(output / filename, index=False)
+    frame.to_csv(output2 / filename, index=False)
+
+
+def load_cut_pairs(path: Path) -> List[CutPair]:
+    data = pd.read_csv(path)
+    return [
+        CutPair(test_path, test_qualified_name, source_path, source_qualified_name)
+        for test_path, test_qualified_name, source_path, source_qualified_name in data[
+            ["path_test", "test_name", "path_src", "class_name"]
+        ].itertuples(index=False)
+    ]
 
 
 def get_source_directories(
@@ -214,8 +235,13 @@ def look_for_tag(
 
 
 if __name__ == '__main__':
-    projects = ['cat']
 
-    for project in projects:
-        project_path = PROJECTS_DIR / project
-        search_module_tests(project, project_path)
+    def main():
+        from sys import argv, exit
+
+        if len(argv) < 2:
+            print(f"Error! Usage: {argv[0]} <project_path> [<result_path>]")
+            exit(1)
+        search_project_tests(*map(Path, argv[1:3]))
+
+    main()
