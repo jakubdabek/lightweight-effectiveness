@@ -1,4 +1,7 @@
+#!/bin/bash
+
 set -eux
+
 mkdir -p projects && cd projects
 
 repo=$1

@@ -1,6 +1,8 @@
+#!/bin/bash
+
 set -eux
 
-## This script requires data from mutations tests to be present (see run-everything.sh)
+## This script requires data from mutations tests to be present (see run-mutations.sh)
 
 echo "******************** Processing data *******************" && read -n1
 python3 effectiveness/mutation/calculate_results.py  # parse PIT output
