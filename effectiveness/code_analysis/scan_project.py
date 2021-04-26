@@ -10,7 +10,7 @@ import pandas as pd
 from effectiveness.code_analysis.get_commit import get_last_commit_id
 from effectiveness.code_analysis.pom_module import CutPair, PomModule
 from effectiveness.pom_utils import ET, POM_NSMAP
-from effectiveness.settings import PROJECTS_DIR, RESULTS_DIR
+from effectiveness.settings import PROJECTS_DIR, SCAN_PROJECT_DIR
 
 special_cases = {
     'core': ('/src/', '/test/'),
@@ -41,13 +41,15 @@ def get_submodules(project_path: Path) -> List[str]:
     return modules_list
 
 
-def search_project_tests(project_path: Path, results_dir=RESULTS_DIR):
+def search_project_tests(project_path: Path, results_dir=SCAN_PROJECT_DIR):
     submodules = get_submodules(project_path)
 
     if submodules:
         for submodule in submodules:
             submodule_path = project_path / submodule
-            search_module_tests(project_path.name, submodule_path, submodule, results_dir=results_dir)
+            search_module_tests(
+                project_path.name, submodule_path, submodule, results_dir=results_dir
+            )
     else:
         search_module_tests(project_path.name, project_path, results_dir=results_dir)
 
@@ -56,7 +58,7 @@ def search_module_tests(
     project_name: str,
     module_path: Path,
     module_name: str = None,
-    results_dir=RESULTS_DIR,
+    results_dir=SCAN_PROJECT_DIR,
 ) -> List[CutPair]:
     """Scan a project and save CUTs with their tests to a file"""
 
@@ -140,14 +142,14 @@ def cut_pairs_to_csv(
     test_pairs: List[CutPair],
     module_path: Path,
     module: PomModule,
-    output=RESULTS_DIR,
+    output=SCAN_PROJECT_DIR,
 ):
     last_commit = get_last_commit_id(module_path)
     project = [module.project_name] * len(test_pairs)
     module_col = [module.name] * len(test_pairs)
-    path_test = [test_pair.test_path for test_pair in test_pairs]
+    test_path = [test_pair.test_path for test_pair in test_pairs]
     test_name = [test_pair.test_qualified_name for test_pair in test_pairs]
-    path_src = [test_pair.source_path for test_pair in test_pairs]
+    class_path = [test_pair.source_path for test_pair in test_pairs]
     src_name = [test_pair.source_qualified_name for test_pair in test_pairs]
     frame = pd.DataFrame(
         OrderedDict(
@@ -155,9 +157,9 @@ def cut_pairs_to_csv(
                 ('project', project),
                 ('module', module_col),
                 ('commit', last_commit),
-                ('path_test', path_test),
+                ('test_path', test_path),
                 ('test_name', test_name),
-                ('path_src', path_src),
+                ('class_path', class_path),
                 ('class_name', src_name),
             )
         )
@@ -165,28 +167,46 @@ def cut_pairs_to_csv(
 
     old_output = output / f"res_{module.name}.csv"
 
-    output2 = output / module.project_name / "latest"
+    latest = output / module.project_name / "latest"
     output = output / module.project_name / last_commit
     output.mkdir(exist_ok=True, parents=True)
-    output2.mkdir(exist_ok=True, parents=True)
+    latest.unlink(missing_ok=True)
+    latest.symlink_to(output, target_is_directory=True)
 
-    # second parentheses empty if no submodule
-    filename = f"tests({module.project_name})({module.name or ''}).csv"
+    filename = f"tests_{module.name or module.project_name}.csv"
 
     print("** Saving CUTs to", output)
     frame.to_csv(old_output, index=False)
     frame.to_csv(output / filename, index=False)
-    frame.to_csv(output2 / filename, index=False)
 
 
-def load_cut_pairs(path: Path) -> List[CutPair]:
+def load_cut_pairs(path: Path) -> Optional[Tuple[str, str, List[CutPair]]]:
+    """Loads CUT data from `path`
+
+    Returns:
+        (project_name, module_name, list_of_cuts)
+        or None if there's no data
+    """
+
     data = pd.read_csv(path)
-    return [
-        CutPair(test_path, test_qualified_name, source_path, source_qualified_name)
-        for test_path, test_qualified_name, source_path, source_qualified_name in data[
-            ["path_test", "test_name", "path_src", "class_name"]
-        ].itertuples(index=False)
-    ]
+    if data.empty:
+        return None
+
+    project = data["project"].unique()
+    assert len(project) == 1, f"{path} should contain data for one project"
+    module = data["module"].fillna('').unique()
+    assert len(module) == 1, f"{path} should contain data for one module"
+
+    return (
+        project[0],
+        module[0],
+        [
+            CutPair(test_path, test_qualified_name, source_path, source_qualified_name)
+            for test_path, test_qualified_name, source_path, source_qualified_name in data[
+                ["test_path", "test_name", "class_path", "class_name"]
+            ].itertuples(index=False)
+        ],
+    )
 
 
 def get_source_directories(

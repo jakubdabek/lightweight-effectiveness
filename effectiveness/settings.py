@@ -47,6 +47,8 @@ MUTATION_PACKAGE = BASE_DIR / 'effectiveness/mutation'
 
 RESULTS_DIR = BASE_DIR / 'results'
 
+SCAN_PROJECT_DIR = RESULTS_DIR / 'scan_project'
+
 # the path that contains the mutation results
 MUTATION_RESULTS_DIR = RESULTS_DIR / 'mutation'
 

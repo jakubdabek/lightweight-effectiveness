@@ -18,8 +18,6 @@ from effectiveness.mutation.pom_changer import add_pitest_plugin
 from effectiveness.mutation.utils import get_projects
 from effectiveness.utils import clear_dir
 
-TESTS_FILE_REGEX = re.compile(r"tests\((?P<project>[^)]+)\)\((?P<module>[^)]*)\)")
-
 
 def main(projects: List[str], operator: str):
     # deal with directories
@@ -40,22 +38,27 @@ def run_project_mutations(project: str, operator: str):
     # TODO: more logging
     project_path = settings.PROJECTS_DIR / project
     current_commit = get_last_commit_id(project_path)
-    cuts_path = settings.RESULTS_DIR / project / current_commit
+    cuts_path = settings.SCAN_PROJECT_DIR / project / current_commit
     if not cuts_path.exists():
         search_project_tests(project_path)
+        assert cuts_path.exists(), "search_project_tests should create the directory"
 
     results_path = settings.MUTATION_RESULTS_DIR / project / current_commit
     results_path.mkdir(parents=True, exist_ok=True)
 
-    for module_cuts in cuts_path.glob("tests*.csv"):
-        cut_project, module = TESTS_FILE_REGEX.fullmatch(module_cuts.stem).groups()
-        assert cut_project == project
+    for module_cuts in cuts_path.glob("tests_*.csv"):
+        loaded = load_cut_pairs(module_cuts)
+        if loaded is None:
+            continue
+
+        loaded_project, module, cut_tests = loaded
+        assert loaded_project == project
+
         if module:
             module_path = project_path / module
         else:
             module_path = project_path
 
-        cut_tests = load_cut_pairs(module_cuts)
         run_module_mutations(
             project,
             module,
@@ -116,6 +119,7 @@ def run_module_mutations(
                 tmp_target_dir, results_path / tmp_target_dir.name, dirs_exist_ok=True
             )
     finally:
+        print("* Restoring pom.xml")
         pom.unlink()
         cached_pom.rename(pom)
 
