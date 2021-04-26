@@ -27,6 +27,9 @@ DEFECT4J = '/Users/grano/Documents/PhD/defects4j/framework/bin'
 
 METRICS_DIR = BASE_DIR / 'metrics'
 
+#tsdetect jar
+TSDETECT_JAR = BASE_DIR / 'tsDetect/TestSmellDetector.jar'
+
 # test smell jar
 TEST_SMELL_JAR = BASE_DIR / 'metrics/test-smells/test-smells.jar'
 

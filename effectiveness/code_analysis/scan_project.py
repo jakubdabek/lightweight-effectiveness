@@ -171,8 +171,33 @@ def search_module_tests(
     print(f"* *  -  {full_name}: Found {len(test_pairs)} class-test pairs")
 
     cut_pairs_to_csv(test_pairs, module_path, module, results_dir)
+    pairs_to_tsdetect_csv(test_pairs, project_name, results_dir)
+    generate_tsdetect_csv(project_name)
 
     return test_pairs
+
+
+def generate_tsdetect_csv(project_name):
+    os.system(f"java -jar {TSDETECT_JAR} {RESULTS_DIR /}tsDetect_{project_name}.csv")
+
+
+def pairs_to_tsdetect_csv(test_pairs: List[CutPair], projectName, output=RESULTS_DIR):
+    project = [projectName] * len(test_pairs)
+    path_test = [test_pair.test_path for test_pair in test_pairs]
+    path_src = [test_pair.source_path for test_pair in test_pairs]
+    frame = pd.DataFrame(
+        OrderedDict(
+            (
+                ('project', project),
+                ('path_test', path_test),
+                ('path_src', path_src)
+            )
+        )
+    )
+    output = output /f"tsDetect_{projectName}.csv"
+    print("** Saving output for tsDetect to", output)
+    frame.to_csv(output, index=False)
+
 
 
 def cut_pairs_to_csv(
