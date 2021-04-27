@@ -43,7 +43,7 @@ def run_project_mutations(project: str, operator: str):
         search_project_tests(project_path)
         assert cuts_path.exists(), "search_project_tests should create the directory"
 
-    results_path = settings.MUTATION_RESULTS_DIR / project / current_commit
+    results_path = settings.MUTATION_RESULTS_DIR / project / current_commit / operator
     results_path.mkdir(parents=True, exist_ok=True)
 
     for module_cuts in cuts_path.glob("tests_*.csv"):
