@@ -87,7 +87,11 @@ def run_module_mutations(
     try:
         for test in cut_tests:
             add_pitest_plugin(
-                cached_pom, pom, test.test_qualified_name, test.source_qualified_name, operator
+                cached_pom,
+                pom,
+                class_to_mutate=test.source_qualified_name,
+                test_to_run=test.test_qualified_name,
+                mutator=operator,
             )
             print(f"* Mutating {test.source_qualified_name} with operator {operator}")
             subprocess.run(

@@ -31,7 +31,7 @@ def pitest_plugin_element(class_to_mutate, test_to_run, mutator='ALL', threads=4
 
 
 def add_pitest_plugin(
-    pom: Path, target: Path, class_to_mutate: str, test_to_run: str, mutator='ALL'
+    pom: Path, target: Path, *, class_to_mutate: str, test_to_run: str, mutator='ALL'
 ):
     pom = ET.parse(pom)
     plugins = pom.find(".//pom:build//pom:plugins", POM_NSMAP)
@@ -42,4 +42,10 @@ def add_pitest_plugin(
 
 if __name__ == '__main__':
     original_pom, new_pom, class_to_mutate, test_to_run, operator = sys.argv[1:]
-    add_pitest_plugin(original_pom, new_pom, class_to_mutate, test_to_run, operator)
+    add_pitest_plugin(
+        original_pom,
+        new_pom,
+        class_to_mutate=class_to_mutate,
+        test_to_run=test_to_run,
+        mutator=operator,
+    )
