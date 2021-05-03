@@ -20,5 +20,5 @@ sed -i -E 's/(<[^>]*(:?target|source)>)1.5/\11.6/' pom.xml
 # maven repositories must be accessed through https
 sed -i -E 's/http:\/\/(repo[^<]*maven)/https:\/\/\1/' pom.xml
 
-mvn clean install -DskipTests
-mvn test -Dmaven.test.failure.ignore.true
+# mvn clean install -DskipTests
+mvn -e --update-snapshots clean test -Dmaven.test.failure.ignore=true
