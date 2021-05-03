@@ -42,7 +42,9 @@ def prepare_results(
         print(f'Rows after cleaning = {aggregate.shape[0]}')
         print('Projects:', aggregate['project'].unique().tolist())
 
-    filename = (METRICS_DIR / "mutation_reports" / operator).with_suffix('.csv')
+    report_dir = METRICS_DIR / "mutation_reports"
+    report_dir.mkdir(parents=True, exist_ok=True)
+    filename = report_dir / f"{operator}.csv"
     print(f"Saving to {filename}")
     aggregate.to_csv(filename, index=False)
 
