@@ -13,7 +13,16 @@ then
     git clone "https://github.com/$1" "$dir"
 fi
 cd "$dir"
+git add -A --force
 git checkout --force "$commit"
+
+for patch in "../../patches/$dir"/*.patch;
+do
+    if [ -f "$patch" ]
+    then
+        git apply "$patch"
+    fi
+done
 
 # maven doesn't support java version 1.5 anymore
 sed -i -E 's/(<[^>]*(:?target|source)>)1.5/\11.6/' pom.xml

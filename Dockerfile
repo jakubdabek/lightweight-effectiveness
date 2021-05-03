@@ -46,7 +46,7 @@ COPY effectiveness/ ./effectiveness
 COPY metrics/ ./metrics
 COPY projects.csv ./
 
-ENV PYTHONPATH="$PWD:$PYTHONPATH"
+COPY patches/ ./patches
 COPY get-project.sh for-each-project.sh run-everything.sh create-classifier.sh ./
 
 RUN echo 'export JAVA_HOME=$(readlink -f /usr/bin/java | sed "s:bin/java::")' >> ~/.bashrc
