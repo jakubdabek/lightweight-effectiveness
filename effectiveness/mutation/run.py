@@ -30,7 +30,7 @@ def main(projects: List[str], operator: str):
     settings.LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
     for i, project in enumerate(projects):
-        print(f"* Running mutations for project {project} ({i}/{len(projects)})")
+        print(f"* Running mutations for project {project} ({i + 1}/{len(projects)})")
         run_project_mutations(project, operator)
 
 
@@ -79,9 +79,10 @@ def run_module_mutations(
     cut_tests: List[CutPair],
     operator: str,
 ):
+    print(f"** Running mutations for module {module}")
     pom = module_path / "pom.xml"
     cached_pom = pom.with_name("~pom_cached.xml")
-    print("* Caching original pom")
+    print("** Caching original pom")
     shutil.copy2(pom, cached_pom)
     target = module_path / 'target'
 
@@ -96,20 +97,33 @@ def run_module_mutations(
                 test_to_run=test.test_qualified_name,
                 mutator=operator,
             )
-            print(f"* Mutating {test.source_qualified_name} with operator {operator}")
-            subprocess.run(
-                [
-                    "mvn",
-                    "org.pitest:pitest-maven:mutationCoverage",
-                    "-X",
-                    "-DoutputFormats=HTML",
-                    "--log-file",
-                    mutation_logs / f"{test.test_qualified_name}({module}).txt",
-                ],
-                cwd=module_path,
-                timeout=settings.MUTATION_TIMEOUT,
-                check=True,
-            )
+            print(f"*** Mutating {test.source_qualified_name} with operator {operator}")
+            try:
+                subprocess.run(
+                    [
+                        "mvn",
+                        "org.pitest:pitest-maven:mutationCoverage",
+                        "-X",
+                        "-DoutputFormats=HTML",
+                        "--log-file",
+                        mutation_logs / f"{test.test_qualified_name}({module}).txt",
+                    ],
+                    cwd=module_path,
+                    timeout=settings.MUTATION_TIMEOUT,
+                    check=True,
+                )
+            except subprocess.CalledProcessError as cpe:
+                # Sometimes we find tests that are excluded from the suite
+                # e.g. when dealing with `AllTests`,
+                # leave the results out when they don't pass.
+                # Exit status doesn't change when the test doesn't pass
+                # or something more severe happens, so ignore all failures.
+                # TODO?: something better
+                print(cpe)
+                continue
+            except subprocess.TimeoutExpired as te:
+                print(te)
+                continue
 
             tmp_target_dir = target / f"{test.test_qualified_name}({module})"
             if tmp_target_dir.exists():
@@ -119,7 +133,7 @@ def run_module_mutations(
                 tmp_target_dir, results_path / tmp_target_dir.name, dirs_exist_ok=True
             )
     finally:
-        print("* Restoring pom.xml")
+        print("** Restoring pom.xml")
         pom.unlink()
         cached_pom.rename(pom)
 
