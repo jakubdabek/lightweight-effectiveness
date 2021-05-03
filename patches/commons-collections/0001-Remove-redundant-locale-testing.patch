@@ -1,0 +1,29 @@
+From 2d6e597bbd1ae1aba48aca0ac9bbf0ce3a1a2317 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Jakub=20D=C4=85bek?= <jakub.dabek@gmail.com>
+Date: Mon, 3 May 2021 15:25:51 +0200
+Subject: [PATCH] Remove redundant locale testing
+
+---
+ .../java/org/apache/commons/collections4/MapUtilsTest.java  | 6 +-----
+ 1 file changed, 1 insertion(+), 5 deletions(-)
+
+diff --git a/src/test/java/org/apache/commons/collections4/MapUtilsTest.java b/src/test/java/org/apache/commons/collections4/MapUtilsTest.java
+index 676a3abd..d585e13c 100644
+--- a/src/test/java/org/apache/commons/collections4/MapUtilsTest.java
++++ b/src/test/java/org/apache/commons/collections4/MapUtilsTest.java
+@@ -55,11 +55,7 @@ import org.junit.Test;
+  *
+  */
+ @SuppressWarnings("boxing")
+-public class MapUtilsTest extends AbstractAvailableLocalesTest {
+-
+-    public MapUtilsTest(final Locale locale) {
+-        super(locale);
+-    }
++public class MapUtilsTest {
+ 
+     public Predicate<Object> getPredicate() {
+         return new Predicate<Object>() {
+-- 
+2.25.1
+
