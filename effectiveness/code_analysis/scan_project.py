@@ -45,16 +45,30 @@ def search_project_tests(project_path: Path, results_dir=SCAN_PROJECT_DIR):
     submodules = get_submodules(project_path)
 
     if submodules:
+        submodule_cuts = {}
         for submodule in submodules:
             submodule_path = project_path / submodule
-            search_module_tests(
-                project_path.name, submodule_path, submodule, results_dir=results_dir
+            cuts = search_module_tests(
+                project_path,
+                project_path.name,
+                submodule_path,
+                submodule,
+                results_dir=results_dir,
             )
+            submodule_cuts[submodule] = cuts
+
+        total_tests = sum(len(cuts) for cuts in submodule_cuts.values())
+        print(f"Total tests for {project_path.name}: {total_tests}")
+        for submodule, cuts in submodule_cuts.items():
+            print(f"   - {submodule}: {len(cuts)}")
     else:
-        search_module_tests(project_path.name, project_path, results_dir=results_dir)
+        search_module_tests(
+            project_path, project_path.name, project_path, results_dir=results_dir
+        )
 
 
 def search_module_tests(
+    project_path: Path,
     project_name: str,
     module_path: Path,
     module_name: str = None,
@@ -67,11 +81,13 @@ def search_module_tests(
         return []
 
     if module_name:
-        print(f"** Scanning {project_name}/{module_name}")
+        full_name = f"{project_name}/{module_name}"
     else:
-        print(f"** Scanning {project_name}")
+        full_name = project_name
 
-    print(f"** Found pom: {pom}")
+    print(f"* Scanning {full_name}")
+
+    print(f"* * Found pom: {pom}")
 
     tree = ET.parse(pom)
     root = tree.getroot()
@@ -82,14 +98,29 @@ def search_module_tests(
     surefire_plugin = root.find(
         ".//pom:plugin/[pom:artifactId='maven-surefire-plugin']", POM_NSMAP
     )
-    if surefire_plugin is not None:
-        print("** maven-surefire-plugin found")
+    if surefire_plugin is None:
+        if module_path != project_path:
+            print("* * * Couldn't find maven-surefire-plugin in pom")
+            print("* * * Searching parent pom")
+            parent_pom = project_path / 'pom.xml'
+            if parent_pom.exists():
+                print(f"* * * Found parent pom: {parent_pom}")
+                surefire_plugin = (
+                    ET.parse(parent_pom)
+                    .getroot()
+                    .find(".//pom:plugin/[pom:artifactId='maven-surefire-plugin']", POM_NSMAP)
+                )
+
+    if surefire_plugin is None:
+        print("* * * Couldn't find maven-surefire-plugin in any pom")
+    else:
+        print("* * maven-surefire-plugin found")
         includes = surefire_plugin.findall('.//pom:include', POM_NSMAP)
         for include in includes:
             include_patterns.append(include.text)
         excludes = surefire_plugin.findall('.//pom:exclude', POM_NSMAP)
         for exclude in excludes:
-            include_patterns.append(exclude.text)
+            exclude_patterns.append(exclude.text)
 
     DEFAULT_INCLUDES = [
         "**/*Test.java",
@@ -98,20 +129,24 @@ def search_module_tests(
         "**/*TestCase.java",
     ]
 
-    from pprint import pprint
-
-    pprint(include_patterns)
+    print("* * Found include patterns:", include_patterns)
 
     if not include_patterns:
         include_patterns = DEFAULT_INCLUDES
     else:
-        for i, pat in enumerate(include_patterns):
-            if re.fullmatch(".*/?AllTests.java$", pat):
-                print("*** AllTests.java file found in includes, changing to *Test.java")
-                include_patterns[i] = "**/*Test.java"
+        for i in reversed(range(len(include_patterns))):
+            pat = include_patterns[i]
+            if pat.endswith("AllTests.java"):
+                # TODO: parse AllTests.java
+                print("* * * AllTests.java file found in includes!")
+                if len(include_patterns) == 1:
+                    include_patterns = DEFAULT_INCLUDES
+                    break
+                else:
+                    del include_patterns[i]
 
     include_patterns = list(set(include_patterns))
-    pprint(include_patterns)
+    print("* * Adjusted include patterns:", include_patterns)
 
     source_directory, test_source_directory = get_source_directories(
         module_path,
@@ -127,11 +162,13 @@ def search_module_tests(
         tests_path = module_path / test_source_directory
     main_path = module_path / source_directory
 
-    print("** Main path:", main_path)
-    print("** Tests path:", tests_path)
+    print("* * Main path:", main_path)
+    print("* * Tests path:", tests_path)
 
     # TODO: remove duplicate test entries
     test_pairs = list(module.find_cut_pairs(tests_path, main_path))
+
+    print(f"* *  -  {full_name}: Found {len(test_pairs)} class-test pairs")
 
     cut_pairs_to_csv(test_pairs, module_path, module, results_dir)
 
@@ -175,7 +212,7 @@ def cut_pairs_to_csv(
 
     filename = f"tests_{module.name or module.project_name}.csv"
 
-    print("** Saving CUTs to", output)
+    print("* * Saving CUTs to", output / filename)
     frame.to_csv(old_output, index=False)
     frame.to_csv(output / filename, index=False)
 

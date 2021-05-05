@@ -79,10 +79,10 @@ def run_module_mutations(
     cut_tests: List[CutPair],
     operator: str,
 ):
-    print(f"** Running mutations for module {module}")
+    print(f"* * Running mutations for module {module}")
     pom = module_path / "pom.xml"
     cached_pom = pom.with_name("~pom_cached.xml")
-    print("** Caching original pom")
+    print("* * Caching original pom")
     shutil.copy2(pom, cached_pom)
     target = module_path / 'target'
 
@@ -97,7 +97,7 @@ def run_module_mutations(
                 test_to_run=test.test_qualified_name,
                 mutator=operator,
             )
-            print(f"*** Mutating {test.source_qualified_name} with operator {operator}")
+            print(f"* * * Mutating {test.source_qualified_name} with operator {operator}")
             try:
                 subprocess.run(
                     [
@@ -133,7 +133,7 @@ def run_module_mutations(
                 tmp_target_dir, results_path / tmp_target_dir.name, dirs_exist_ok=True
             )
     finally:
-        print("** Restoring pom.xml")
+        print("* * Restoring pom.xml")
         pom.unlink()
         cached_pom.rename(pom)
 

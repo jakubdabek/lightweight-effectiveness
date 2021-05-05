@@ -54,16 +54,26 @@ class PomModule:
         """Returns the file name of the suspected class under test
         for a given test path and include pattern that found the test
         """
-        if include_pattern.endswith("/*Test.java"):
-            return re.sub(r"Test.java$", r".java", test_path.name)
-        elif include_pattern.endswith("/Test*.java"):
-            return re.sub(r"^Test", r"", test_path.name)
-        elif include_pattern.endswith("/*TestCase.java"):
-            return re.sub(r"TestCase.java$", r".java", test_path.name)
-        else:
-            return re.sub(
-                r"(?:Test)?(.*?)(?:Test|TestCase)?\.java", r"\1.java", test_path.stem
-            )
+        # get only last part of the path
+        include_pattern = include_pattern.rsplit('/', 1)[-1]
+
+        known_patterns = {
+            "*Test.java": (r"Test.java$", r".java"),
+            "*Tests.java": (r"Tests.java$", r".java"),
+            "Test*.java": (r"^Test", r""),
+            "*TestCase.java": (r"TestCase.java$", r".java")
+        }
+        try:
+            return re.sub(*known_patterns[include_pattern], test_path.name)
+        except KeyError:
+            print(f"* * * Unknown pattern: {include_pattern!r}")
+            for sub in known_patterns.values():
+                subbed = re.sub(*sub, test_path.name)
+                if subbed != test_path.name:
+                    return subbed
+
+            # couldn't use any known patterns
+            return test_path.name
 
     @staticmethod
     def get_full_qualified_name(path: Path) -> str:
