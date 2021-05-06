@@ -30,29 +30,36 @@ RUN git clone https://github.com/universal-ctags/ctags.git && \
     make -j4 && \
     make install
 
-WORKDIR /root/experiments
+ARG USER=ubuntu
+ARG UID=1000
 
-COPY requirements.txt ./
-RUN python3 -m pip install --upgrade pip setuptools
+RUN useradd --uid ${UID} --gid root --groups sudo --create-home --shell /bin/bash ${USER}
+RUN ./apt-install-all-clean.sh sudo
+RUN echo "#${UID}     ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-RUN python3 -m pip install -r requirements.txt
+USER ${UID}
+WORKDIR /home/${USER}/experiments
+
+COPY --chown=${UID} requirements.txt ./
+RUN python3 -m pip install --user --upgrade pip setuptools
+RUN python3 -m pip install --user -r requirements.txt
 
 # dev debug packages
-RUN /apt-install-all-clean.sh tmux tree less file
+RUN sudo /apt-install-all-clean.sh tmux tree less file
 
 # copy scripts
-COPY effectiveness/ ./effectiveness
+COPY --chown=${UID} effectiveness/ ./effectiveness
 # copy dir with stats and code for metrics
-COPY metrics/ ./metrics
-COPY projects.csv ./
+COPY --chown=${UID} metrics/ ./metrics
+COPY --chown=${UID} projects.csv ./
 
-COPY patches/ ./patches
-COPY get-project.sh for-each-project.sh run-everything.sh create-classifier.sh ./
+COPY --chown=${UID} patches/ ./patches
+COPY --chown=${UID} get-project.sh for-each-project.sh run-everything.sh create-classifier.sh ./
 
 RUN echo 'export JAVA_HOME=$(readlink -f /usr/bin/java | sed "s:bin/java::")' >> ~/.bashrc
-RUN echo 'export PYTHONPATH="/root/experiments/:${PYTHONPATH}"' >> ~/.bashrc
+RUN echo 'export PYTHONPATH="${HOME}/experiments:${PYTHONPATH}"' >> ~/.bashrc
 
 # only 4 first projects for testing
 RUN sed -i 5q projects.csv
 
-CMD ["bash"]
+CMD ["bash", "--login"]
