@@ -207,8 +207,12 @@ def cut_pairs_to_csv(
     latest = output / module.project_name / "latest"
     output = output / module.project_name / last_commit
     output.mkdir(exist_ok=True, parents=True)
+    if not latest.is_symlink() and latest.is_dir():
+        import shutil
+
+        shutil.rmtree(latest)
     latest.unlink(missing_ok=True)
-    latest.symlink_to(output, target_is_directory=True)
+    latest.symlink_to(output.relative_to(latest.parent), target_is_directory=True)
 
     filename = f"tests_{module.name or module.project_name}.csv"
 

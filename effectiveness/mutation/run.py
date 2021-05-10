@@ -39,9 +39,8 @@ def run_project_mutations(project: str, operator: str):
     project_path = settings.PROJECTS_DIR / project
     current_commit = get_last_commit_id(project_path)
     cuts_path = settings.SCAN_PROJECT_DIR / project / current_commit
-    if not cuts_path.exists():
-        search_project_tests(project_path)
-        assert cuts_path.exists(), "search_project_tests should create the directory"
+    search_project_tests(project_path)
+    assert cuts_path.exists(), "search_project_tests should create the directory"
 
     results_path = settings.MUTATION_RESULTS_DIR / project / current_commit / operator
     results_path.mkdir(parents=True, exist_ok=True)
@@ -80,7 +79,7 @@ def run_module_mutations(
     operator: str,
 ):
     print(f"* * Running mutations for module {module}")
-    pom = module_path / "pom.xml"
+    pom = project_path / "pom.xml"
     cached_pom = pom.with_name("~pom_cached.xml")
     print("* * Caching original pom")
     shutil.copy2(pom, cached_pom)
@@ -88,6 +87,29 @@ def run_module_mutations(
 
     mutation_logs = settings.LOGS_DIR / project
     mutation_logs.mkdir(parents=True, exist_ok=True)
+
+    if module:
+        pl = ["--projects", module]
+    else:
+        pl = []
+
+    # PIT requires test files to be compiled
+    print("* * Compiling tests")
+    subprocess.run(
+        [
+            "mvn",
+            "test-compile",
+            "--also-make",
+            "--update-snapshots",
+            "--errors",
+            *pl,
+            "--log-file",
+            mutation_logs / f"mvn-test-compile({module}).txt",
+        ],
+        cwd=project_path,
+        check=True,
+    )
+
     try:
         for test in cut_tests:
             add_pitest_plugin(
@@ -103,12 +125,13 @@ def run_module_mutations(
                     [
                         "mvn",
                         "org.pitest:pitest-maven:mutationCoverage",
+                        *pl,
                         "-X",
                         "-DoutputFormats=HTML",
                         "--log-file",
                         mutation_logs / f"{test.test_qualified_name}({module}).txt",
                     ],
-                    cwd=module_path,
+                    cwd=project_path,
                     timeout=settings.MUTATION_TIMEOUT,
                     check=True,
                 )
