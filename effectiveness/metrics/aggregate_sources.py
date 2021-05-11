@@ -3,25 +3,23 @@ from effectiveness.settings import *
 
 
 def process_results(
-    mutation=METRICS_DIR / 'results.csv',
+    *,
+    mutation: Path,
     smells=METRICS_DIR / 'test-smells.csv',
     ck=METRICS_DIR / 'ck-metrics.csv',
     code_smells=METRICS_DIR / 'code-smells',
     readability=METRICS_DIR / 'readability',
     output=METRICS_DIR / 'merge.csv',
-) -> bool:
+) -> None:
     """
-    It aggregates into a single csv file all the metrics about mutation, coverage, smells and ck-metrics
-    separately computed
+    Aggregate all the metrics about mutation, coverage, smells and ck-metrics etc. into a single csv file
 
-    Aggregates the result from the mutation with the other metrics we compute
     :param mutation: the csv with mutation score and line coverage
     :param smells: the csv with the test smells
     :param ck: the csv with the code metrics
     :param code_smells: the directory that contains the code smells metrics (1 for each project)
     :param readability: the directory that contains the two files for the readability (1 for CUT, 1 for test)
     :param output: the output csv
-
     """
     needed_files = [mutation, smells, ck, code_smells, readability]
     missing_files = [file for file in needed_files if not file.exists()]
@@ -29,17 +27,19 @@ def process_results(
     if not missing_files:
         print("* Processing {}".format(mutation))
     else:
-        print(f"* Cannot process results, one or more input files are missing: {missing_files}")
-        return False
+        raise RuntimeError(
+            f"* Cannot process results, one or more input files are missing: {missing_files}"
+        )
 
     mutation_frame = pd.read_csv(mutation)
     print("* Number of originally executed mutations = {}".format(len(mutation_frame)))
     mutation_frame = mutation_frame.dropna(subset=['mutation_score', 'line_coverage'])
-    print("* Number of successfully mutation = {}".format(len(mutation_frame)))
-    filtered_frame = mutation_frame
+    print("* Number of successfull mutations = {}".format(len(mutation_frame)))
+    filtered_frame: pd.DataFrame = mutation_frame
+
     if len(mutation_frame) > 0:
-        smells_frame = pd.read_csv(smells)
-        ck_frame = pd.read_csv(ck)
+        smells_frame: pd.DataFrame = pd.read_csv(smells)
+        ck_frame: pd.DataFrame = pd.read_csv(ck)
 
         print("*-------------------------------------------")
 
@@ -158,9 +158,8 @@ def process_results(
 
     print("*-------------------------------------------")
     print("* Saving the aggregate in {}".format(output))
+    output.parent.mkdir(parents=True, exist_ok=True)
     filtered_frame.to_csv(output, index=False)
-
-    return True
 
 
 def get_process_metric(row, flag, ck_frame, metric, verbose=False):
@@ -329,17 +328,22 @@ def count_smells(complete_frame='merge.csv'):
 if __name__ == '__main__':
 
     for operator in ALL_OPERATORS:
-        ok = process_results(
-            mutation=METRICS_DIR / f'results-{operator}.csv'.format(operator),
-            output=METRICS_DIR / f'merge-{operator}.csv'.format(operator),
-        )
-        if not ok:
-            continue
-        separate_sets(
-            complete_frame=METRICS_DIR / f'merge-{operator}.csv'.format(operator),
-            name_good=f'good_tests-{operator}',
-            name_bad=f'bad_tests-{operator}',
-            delimiter='median',
-        )
+        try:
+            merged_file = METRICS_DIR / "merged" / f'{operator}.csv'
+
+            process_results(
+                mutation=METRICS_DIR / "mutation_reports" / f'{operator}.csv',
+                output=merged_file,
+            )
+            separate_sets(
+                complete_frame=merged_file,
+                name_good=f'good_tests-{operator}',
+                name_bad=f'bad_tests-{operator}',
+                delimiter='median',
+            )
+
+            print("*===========================================\n")
+        except RuntimeError as e:
+            print(e)
     # process_results()
     # separate_sets()
