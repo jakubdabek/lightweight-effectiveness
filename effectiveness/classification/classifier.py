@@ -1,50 +1,47 @@
-import numpy as np
-import matplotlib
-from matplotlib import pyplot as plt
 import joblib
-
-from sklearn.model_selection import (
-    train_test_split,
-    RepeatedStratifiedKFold,
-    GridSearchCV,
-    StratifiedKFold,
-    cross_validate,
-)
+import matplotlib
+import numpy as np
+import pandas as pd
+from effectiveness.classification.plots import go, py
+from effectiveness.settings import DATA_DIR
+from matplotlib import pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (
     accuracy_score,
+    brier_score_loss,
+    f1_score,
+    make_scorer,
+    mean_absolute_error,
     precision_score,
     recall_score,
-    f1_score,
     roc_auc_score,
-    mean_absolute_error,
-    make_scorer,
-    brier_score_loss,
     roc_curve,
 )
-
-from sklearn.preprocessing import OneHotEncoder
-from effectiveness.classification.plots import *
-
-from sklearn.utils import shuffle
-from sklearn.svm import SVC
+from sklearn.model_selection import (
+    GridSearchCV,
+    RepeatedStratifiedKFold,
+    StratifiedKFold,
+    cross_validate,
+    train_test_split,
+)
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
-
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.svm import SVC
+from sklearn.utils import shuffle
 
 matplotlib.use('Agg')
 
 
-def import_frame(consider_coverage=True, suffix=''):
+def import_frame(*, consider_coverage=True, delimiter="quartile", operator="ALL"):
     """
     Imports all the data needed
     :param consider_coverage: boolean value to take into account or not the coverage
     :return: a tuple with the frame and the metrics
     """
 
-    positive_example = pd.read_csv(DATA_DIR / f'good_tests{suffix}.csv')
-    negative_example = pd.read_csv(DATA_DIR / f'bad_tests{suffix}.csv')
+    positive_example: pd.DataFrame = pd.read_csv(DATA_DIR / delimiter / operator / "good.csv")
+    negative_example: pd.DataFrame = pd.read_csv(DATA_DIR / delimiter / operator / "bad.csv")
     coverage_index = list(positive_example.columns).index('line_coverage')
     index = coverage_index if consider_coverage else coverage_index + 1
     metrics = positive_example.columns[index::].tolist()
@@ -141,7 +138,14 @@ def get_param_grid(algorithm, metrics):
 
 
 def classification(
-    consider_coverage=True, n_inner=5, n_outer=10, n_repeats=10, algorithm='all', suffix=''
+    *,
+    consider_coverage=True,
+    n_inner=5,
+    n_outer=10,
+    n_repeats=10,
+    algorithm='all',
+    delimiter="quartile",
+    operator="ALL",
 ):
     """
     Runs the entire process of classification and evaluation
@@ -158,12 +162,15 @@ def classification(
 
     # Import the data
     print('Importing data')
-    frame, metrics = import_frame(consider_coverage, suffix)
-    print('Import: DONE')
+    frame, metrics = import_frame(
+        consider_coverage=consider_coverage, delimiter=delimiter, operator=operator
+    )
+    print(f'Imported {len(frame)} rows with following metrics:')
+    for metric in metrics:
+        print(" -", metric)
 
     X = frame[metrics]
     Y = frame['y']
-    print('Running with {} metrics'.format(metrics))
     pipe = Pipeline([('preprocessing', StandardScaler()), ('classifier', SVC())])
 
     # Set up the algorithms to tune, train and evaluate

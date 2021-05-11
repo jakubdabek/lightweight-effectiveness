@@ -1,5 +1,8 @@
+from pathlib import Path
+from typing import Literal
+
 import pandas as pd
-from effectiveness.settings import *
+from effectiveness.settings import ALL_OPERATORS, DATA_DIR, METRICS_DIR
 
 
 def process_results(
@@ -247,9 +250,8 @@ def get_ck_value(row, ck_frame, metric, key='class_name', verbose=False):
 
 def separate_sets(
     complete_frame=METRICS_DIR / 'merge.csv',
-    delimiter='quartile',
-    name_good='good_tests',
-    name_bad='bad_tests',
+    delimiter: Literal["quartile", "median"] = "quartile",
+    operator='ALL',
 ):
     """
     It separates
@@ -267,20 +269,19 @@ def separate_sets(
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    if delimiter == 'quartile':
+    if delimiter == "quartile":
         bad_tests = frame[frame['mutation_score'] <= lower_quantile]
         good_tests = frame[frame['mutation_score'] >= upper_quantile]
-        bad_tests.to_csv(DATA_DIR / f'{name_good}.csv', index=False)
-        good_tests.to_csv(DATA_DIR / f'{name_bad}.csv', index=False)
-        print(f"* Good tests quantile = {len(good_tests)}")
-        print(f"* Bad tests quantile = {len(bad_tests)}")
-    else:
+    elif delimiter == "median":
         bad_tests = frame[frame['mutation_score'] <= median]
         good_tests = frame[frame['mutation_score'] > median]
-        bad_tests.to_csv(DATA_DIR / f'{name_good}_median.csv', index=False)
-        good_tests.to_csv(DATA_DIR / f'{name_bad}_median.csv', index=False)
-        print(f"* Good tests median = {len(good_tests)}")
-        print(f"* Bad tests median = {len(bad_tests)}")
+
+    output_dir = DATA_DIR / delimiter / operator
+    output_dir.mkdir(parents=True, exist_ok=True)
+    bad_tests.to_csv(output_dir / "bad.csv", index=False)
+    good_tests.to_csv(output_dir / "good.csv", index=False)
+    print(f"* Good tests {delimiter} = {len(good_tests)}")
+    print(f"* Bad tests {delimiter} = {len(bad_tests)}")
 
 
 def count_smells(complete_frame='merge.csv'):
@@ -337,13 +338,10 @@ if __name__ == '__main__':
             )
             separate_sets(
                 complete_frame=merged_file,
-                name_good=f'good_tests-{operator}',
-                name_bad=f'bad_tests-{operator}',
                 delimiter='median',
+                operator=operator,
             )
 
             print("*===========================================\n")
         except RuntimeError as e:
             print(e)
-    # process_results()
-    # separate_sets()

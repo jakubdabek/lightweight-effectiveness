@@ -1,7 +1,7 @@
 import pandas as pd
-import plotly.plotly as py
 import plotly.graph_objs as go
-from effectiveness.settings import *
+import plotly.plotly as py
+from effectiveness.settings import DATA_DIR, PLOT_DIR
 
 
 def main(frame, models=['dynamic', 'static'], technique='rfc'):
@@ -46,55 +46,27 @@ def plot_fancy_thing(metrics, output_name):
         else:
             aux_values.append(0)
             aux_values.append(value)
-        data.append(
-            go.Bar(
-                x=aux_values,
-                y=['line cov.', 'others'],
-                orientation='h',
-                name=name
-            )
-        )
-        index = index+1
+        data.append(go.Bar(x=aux_values, y=['line cov.', 'others'], orientation='h', name=name))
+        index = index + 1
 
     layout = go.Layout(
         xaxis=dict(
             title="Mean Decrease in Impurity",
-            titlefont=dict(
-              size=16,
-              color='black'
-            ),
-            tickfont=dict(
-                size=16,
-                color='black'
-            ),
+            titlefont=dict(size=16, color='black'),
+            tickfont=dict(size=16, color='black'),
         ),
         yaxis=dict(
-            titlefont=dict(
-                size=16,
-                color='black'
-            ),
-            tickfont=dict(
-                size=16,
-                color='black'
-            ),
+            titlefont=dict(size=16, color='black'),
+            tickfont=dict(size=16, color='black'),
         ),
         autosize=True,
-        margin=go.Margin(
-            l=80,
-            r=50,
-            b=70,
-            t=20,
-            pad=10
-        ),
+        margin=go.Margin(l=80, r=50, b=70, t=20, pad=10),
         legend=dict(
-            font=dict(
-                size=13,
-                color='black'
-            )
+            font=dict(size=13, color='black')
             # ,
             # x=-.1
         ),
-        barmode='stack'
+        barmode='stack',
     )
 
     fig = go.Figure(data=data, layout=layout)
@@ -116,47 +88,29 @@ def plot_feature_importance(metrics, output_name):
     names = [x.replace('_', ' ') for x in names]
     names = [x.replace('is', ' ') for x in names]
 
-    data = [go.Bar(
-        x=values,
-        y=names,
-        orientation='h',
-    )]
+    data = [
+        go.Bar(
+            x=values,
+            y=names,
+            orientation='h',
+        )
+    ]
 
     layout = go.Layout(
         xaxis=dict(
             title="Mean Decrease in Impurity",
-            titlefont=dict(
-              size=16,
-              color='black'
-            ),
-            tickfont=dict(
-                size=16,
-                color='black'
-            ),
+            titlefont=dict(size=16, color='black'),
+            tickfont=dict(size=16, color='black'),
         ),
         yaxis=dict(
-            titlefont=dict(
-                size=16,
-                color='black'
-            ),
-            tickfont=dict(
-                size=16,
-                color='black'
-            ),
+            titlefont=dict(size=16, color='black'),
+            tickfont=dict(size=16, color='black'),
         ),
         autosize=True,
-        margin=go.Margin(
-            l=160,
-            r=50,
-            b=70,
-            t=20,
-            pad=10
-        ),
+        margin=go.Margin(l=160, r=50, b=70, t=20, pad=10),
         legend=dict(
-            font=dict(
-                size=6
-            ),
-        )
+            font=dict(size=6),
+        ),
     )
 
     fig = go.Figure(data=data, layout=layout)

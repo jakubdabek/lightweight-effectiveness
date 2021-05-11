@@ -23,7 +23,7 @@ def main():
     For the sake of simplicity, you might just de-comment one of the lines of code below.
     """
 
-    suffix = sys.argv[1] if len(sys.argv) > 1 else ''
+    delimiter, operator = sys.argv[1:3] if len(sys.argv) > 2 else ["quartile", "ALL"]
 
     if False:
         # full model
@@ -43,7 +43,8 @@ def main():
             n_outer=N_OUTER,
             n_repeats=N_REPEATS,
             algorithm=algorithm,
-            suffix=suffix,
+            delimiter=delimiter,
+            operator=operator,
         )
 
     # De-comment to run only the KNN algorithm

@@ -47,14 +47,15 @@ RUN python3 -m pip install --user -r requirements.txt
 # dev debug packages
 RUN sudo /apt-install-all-clean.sh tmux tree less file
 
-# copy scripts
-COPY --chown=${UID} effectiveness/ ./effectiveness
 # copy dir with stats and code for metrics
 COPY --chown=${UID} metrics/ ./metrics
 COPY --chown=${UID} projects.csv ./
 
 COPY --chown=${UID} patches/ ./patches
 COPY --chown=${UID} get-project.sh for-each-project.sh run-everything.sh create-classifier.sh ./
+
+# copy scripts
+COPY --chown=${UID} effectiveness/ ./effectiveness
 
 RUN echo 'export JAVA_HOME=$(readlink -f /usr/bin/java | sed "s:bin/java::")' >> ~/.bashrc
 RUN echo 'export PYTHONPATH="${HOME}/experiments:${PYTHONPATH}"' >> ~/.bashrc
