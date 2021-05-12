@@ -40,7 +40,7 @@ RUN echo "#${UID}     ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 USER ${UID}
 WORKDIR /home/${USER}/experiments
 
-COPY --chown=${UID} requirements.txt ./
+COPY --chown=${UID}:root requirements.txt ./
 RUN python3 -m pip install --user --upgrade pip setuptools
 RUN python3 -m pip install --user -r requirements.txt
 
@@ -48,17 +48,20 @@ RUN python3 -m pip install --user -r requirements.txt
 RUN sudo /apt-install-all-clean.sh tmux tree less file
 
 # copy dir with stats and code for metrics
-COPY --chown=${UID} metrics/ ./metrics
-COPY --chown=${UID} projects.csv ./
+COPY --chown=${UID}:root metrics/ ./metrics
+COPY --chown=${UID}:root projects.csv ./
 
-COPY --chown=${UID} patches/ ./patches
-COPY --chown=${UID} get-project.sh for-each-project.sh run-everything.sh create-classifier.sh ./
+COPY --chown=${UID}:root patches/ ./patches
+COPY --chown=${UID}:root get-project.sh for-each-project.sh run-everything.sh create-classifier.sh ./
 
 # copy scripts
-COPY --chown=${UID} effectiveness/ ./effectiveness
+COPY --chown=${UID}:root effectiveness/ ./effectiveness
 
 RUN echo 'export JAVA_HOME=$(readlink -f /usr/bin/java | sed "s:bin/java::")' >> ~/.bashrc
 RUN echo 'export PYTHONPATH="${HOME}/experiments:${PYTHONPATH}"' >> ~/.bashrc
+
+# create folders with correct permissions
+RUN mkdir -p projects results ~/.m2
 
 # only 4 first projects for testing
 RUN sed -i 5q projects.csv
