@@ -10,7 +10,7 @@ import pandas as pd
 from effectiveness.code_analysis.get_commit import get_last_commit_id
 from effectiveness.code_analysis.pom_module import CutPair, PomModule
 from effectiveness.pom_utils import ET, POM_NSMAP
-from effectiveness.settings import PROJECTS_DIR, SCAN_PROJECT_DIR
+from effectiveness.settings import PROJECTS_DIR, SCAN_PROJECT_DIR, RESULTS_DIR, TSDETECT_JAR, TSDETECT_DIR
 
 special_cases = {
     'core': ('/src/', '/test/'),
@@ -178,13 +178,14 @@ def search_module_tests(
 
 
 def generate_tsdetect_csv(project_name):
-    os.system(f"java -jar {TSDETECT_JAR} {RESULTS_DIR /}tsDetect_{project_name}.csv")
+    os.system(f"java -jar {TSDETECT_JAR} {RESULTS_DIR}/tsDetect_{project_name}.csv")
 
 
-def pairs_to_tsdetect_csv(test_pairs: List[CutPair], projectName, output=RESULTS_DIR):
+def pairs_to_tsdetect_csv(test_pairs: List[CutPair], projectName, output=TSDETECT_DIR):
     project = [projectName] * len(test_pairs)
     path_test = [test_pair.test_path for test_pair in test_pairs]
     path_src = [test_pair.source_path for test_pair in test_pairs]
+    #todo: remove column headers
     frame = pd.DataFrame(
         OrderedDict(
             (
