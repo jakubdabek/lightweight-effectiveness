@@ -178,14 +178,14 @@ def search_module_tests(
 
 
 def generate_tsdetect_csv(project_name):
-    os.system(f"java -jar {TSDETECT_JAR} {RESULTS_DIR}/tsDetect_{project_name}.csv")
+    #                                    /experiments/results/scan_project/tsDetect/{project_name}.csv
+    os.system(f"java -jar {TSDETECT_JAR} {RESULTS_DIR}/tsDetect/{project_name}.csv")
 
 
 def pairs_to_tsdetect_csv(test_pairs: List[CutPair], projectName, output=TSDETECT_DIR):
     project = [projectName] * len(test_pairs)
     path_test = [test_pair.test_path for test_pair in test_pairs]
     path_src = [test_pair.source_path for test_pair in test_pairs]
-    #todo: remove column headers
     frame = pd.DataFrame(
         OrderedDict(
             (
@@ -197,7 +197,7 @@ def pairs_to_tsdetect_csv(test_pairs: List[CutPair], projectName, output=TSDETEC
     )
     output = output /f"tsDetect_{projectName}.csv"
     print("** Saving output for tsDetect to", output)
-    frame.to_csv(output, index=False)
+    frame.to_csv(output, index=False, header=False)
 
 
 
