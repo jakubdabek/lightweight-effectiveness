@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 import pandas as pd
+import glob
 from effectiveness.code_analysis.get_commit import get_last_commit_id
 from effectiveness.code_analysis.pom_module import CutPair, PomModule
 from effectiveness.pom_utils import ET, POM_NSMAP
@@ -199,6 +200,16 @@ def pairs_to_tsdetect_csv(test_pairs: List[CutPair], projectName, output=TSDETEC
     print("** Saving output for tsDetect to", output)
     frame.to_csv(output, index=False, header=False)
 
+
+def merge_testsmells(dir=TSDETECT_DIR):
+    all_files = glob.glob(dir + "/.csv")
+    out_file = []
+    for filename in all_files:
+        current_file = pd.read_csv(filename, index_col=None, header=0)
+        out_file.append(current_file)
+    
+    frame = pd.concat(out_file, axis=0, ignore_index=True)
+    frame.to_csv(dir / "test-smells.csv")
 
 
 def cut_pairs_to_csv(
