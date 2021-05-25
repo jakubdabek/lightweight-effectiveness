@@ -8,7 +8,7 @@ from effectiveness.settings import ALL_OPERATORS, DATA_DIR, METRICS_DIR
 def process_results(
     *,
     mutation: Path,
-    smells=METRICS_DIR / 'test-smells.csv',
+    smells=METRICS_DIR / '_test-smells.csv',
     ck=METRICS_DIR / 'ck-metrics.csv',
     code_smells=METRICS_DIR / 'code-smells',
     readability=METRICS_DIR / 'readability',
@@ -313,16 +313,38 @@ def count_smells(complete_frame='merge.csv'):
     :param complete_frame: the csv file to read
     """
     frame = pd.read_csv(complete_frame)
-    #todo: new smells
     test_smells_metrics = [
-        'isAssertionRoulette',
-        'isEagerTest',
-        'isLazyTest',
-        'isMysteryGuest',
-        'isSensitiveEquality',
-        'isResourceOptimism',
-        'isForTestersOnly',
-        'isIndirectTesting',
+        # 'isAssertionRoulette',
+        # 'isEagerTest',
+        # 'isLazyTest',
+        # 'isMysteryGuest',
+        # 'isSensitiveEquality',
+        # 'isResourceOptimism',
+        # 'isForTestersOnly',
+        # 'isIndirectTesting',
+        'Assertion Roulette',
+        'Conditional Test Logic',
+        'Constructor Initialization',
+        'Dead Fields',                  # new addition
+        'Default Test',
+        'Empty Test',
+        'Exception Catching Throwing',
+        'General Fixture',
+        'Lack Of Cohesion',             # new addition
+        'Mystery Guest',
+        'Print Statement',
+        'Redundant Assertion',
+        'Sensitive Equality',
+        'Verbose Test',
+        'Sleepy Test',
+        'Eager Test',
+        'Lazy Test',
+        'Dupliacte Assert',
+        'Unknown Test',
+        'IgnoredTest',
+        'Resource Optimism',
+        'Magic Number Test',
+        'Dependent Test'
     ]
     overall = 0
     for metric in test_smells_metrics:
