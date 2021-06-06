@@ -186,7 +186,7 @@ def generate_tsdetect_csv(project_name):
     print("Detecting smells with tsdetect")
     print(f"\njava -jar {TSDETECT_JAR} {RESULTS_DIR}/scan_project/tsDetect_{project_name}.csv\n")
     os.system(f"java -jar {TSDETECT_JAR} {RESULTS_DIR}/scan_project/tsDetect_{project_name}.csv")
-    os.system(f"mv TsDetect_{project_name}.csv /home/ubuntu/experiments/effectiveness/tsDetect/TsDetect_{project_name}.csv")
+    os.system(f"mv TsDetect_{project_name}.csv /home/ubuntu/experiments/effectiveness/tsDetect/projects/TsDetect_{project_name}.csv")
 
 
 def pairs_to_tsdetect_csv(test_pairs: List[CutPair], projectName, output=TSDETECT_DIR):
@@ -210,14 +210,14 @@ def pairs_to_tsdetect_csv(test_pairs: List[CutPair], projectName, output=TSDETEC
 def merge_testsmells(dir=TSDETECT_DIR):
     print("merging tsDetext csvs")
     print(dir)
-    all_files = glob.glob(dir.__str__() + "/[!_]*.csv")
+    all_files = glob.glob(dir.__str__() + "/projects/*.csv")
     out_file = []
     for filename in all_files:
         current_file = pd.read_csv(filename, index_col=None, header=0)
         out_file.append(current_file)
     
     frame = pd.concat(out_file, axis=0, ignore_index=True)
-    frame.to_csv(dir / "_test-smells.csv", index=False)
+    frame.to_csv(dir / "test-smells.csv", index=False)
     print("done merging")
 
 
