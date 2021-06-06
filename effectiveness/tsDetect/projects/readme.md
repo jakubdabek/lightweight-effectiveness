@@ -1,0 +1,1 @@
+Partial results of test smell detection will be stored here

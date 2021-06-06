@@ -8,7 +8,7 @@ from effectiveness.settings import ALL_OPERATORS, DATA_DIR, METRICS_DIR
 def process_results(
     *,
     mutation: Path,
-    smells=METRICS_DIR / '_test-smells.csv',
+    smells=METRICS_DIR / 'test-smells.csv',
     ck=METRICS_DIR / 'ck-metrics.csv',
     code_smells=METRICS_DIR / 'code-smells',
     readability=METRICS_DIR / 'readability',

@@ -33,7 +33,7 @@ TSDETECT_DIR = BASE_DIR / 'effectiveness/tsDetect'
 TSDETECT_JAR = BASE_DIR / 'effectiveness/tsDetect/TestSmellDetector.jar'
 
 # test smell jar
-TEST_SMELL_JAR = BASE_DIR / 'metrics/test-smells/_test-smells.jar'
+TEST_SMELL_JAR = BASE_DIR / 'metrics/test-smells/test-smells.jar'
 
 # code smell jar
 CODE_SMELL_JAR = BASE_DIR / 'metrics/code-quality/code-smells.jar'
