@@ -1,22 +1,20 @@
-# """This module runs mutation tests on all given projects,
-# parses the results and saves them in convenient format.
-# """
 import sys
 from typing import List
 
 from effectiveness.mutation.utils import get_projects
 from metrics.checkstyle_metrics import calculate_metrics as calculate_checkstyle_metrics
+from metrics.java_metrics import calculate_metrics as calculate_java_metrics
 
 
 def calcutate_metrics(projects: List[str]):
-    calculate_project_metrics("project1")
-    # for i, project in enumerate(projects):
-    #     print(f"* Calculating additional metrics for project {project} ({i + 1}/{len(projects)})")
-    #     calculate_project_metrics(project)
+    for i, project in enumerate(projects):
+        print(f"* Calculating additional metrics for project {project} ({i + 1}/{len(projects)})")
+        calculate_project_metrics(project)
 
 
 def calculate_project_metrics(project: str):
-    calculate_checkstyle_metrics(project)
+    # calculate_checkstyle_metrics(project)
+    calculate_java_metrics(project)
 
 
 if __name__ == "__main__":
