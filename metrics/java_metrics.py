@@ -25,12 +25,27 @@ def calculate_metrics(project: str):
     results_file_writer = csv.writer(results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
     results_file_writer.writerow(['Project', 'Package', 'Class', 'MethodSignature', 'OuterClass', 'AccessModifier', 'IsStatic', 'IsFinal', 'ATFD', 'CA', 'CAM', 'CBO', 'CBOMZ', 'CE', 'CYCLO', 'DAM', 'DIT', 'LCOM', 'LD', 'LOC_C', 'LOC_M', 'MFA', 'MOA', 'MRD', 'NOAM', 'NOC', 'NOL_C', 'NOL_M', 'NOM', 'NOMM', 'NOMR_C', 'NOMR_M', 'NOPA', 'NOPV', 'NPM', 'RFC', 'WMC', 'WMCNAMM', 'WOC'])
     count_metrics(project_dir / 'src/main/java', project_dir, results_file_writer)
+    results_file.close()
 
     if os.path.isfile(project_dir / 'output.csv'):
         os.remove(project_dir / 'output.csv')
 
     # Usunięcie jara z folderu projektu
     os.remove(project_dir / JAVA_METRICS_JAR_NAME)
+
+    # Mergowanie wyników w głównym pliku java_metrics.csv
+    if not os.path.isfile(Path.cwd() / 'metrics/java_metrics.csv'):
+        main_results_file = open(Path.cwd() / 'metrics/java_metrics.csv', 'x', newline='')
+        csv.writer(main_results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL).writerow(['Project', 'Package', 'Class', 'MethodSignature', 'OuterClass', 'AccessModifier', 'IsStatic', 'IsFinal', 'ATFD', 'CA', 'CAM', 'CBO', 'CBOMZ', 'CE', 'CYCLO', 'DAM', 'DIT', 'LCOM', 'LD', 'LOC_C', 'LOC_M', 'MFA', 'MOA', 'MRD', 'NOAM', 'NOC', 'NOL_C', 'NOL_M', 'NOM', 'NOMM', 'NOMR_C', 'NOMR_M', 'NOPA', 'NOPV', 'NPM', 'RFC', 'WMC', 'WMCNAMM', 'WOC'])
+    else:
+        main_results_file = open(Path.cwd() / 'metrics/java_metrics.csv', 'a', newline='')
+
+    main_results_file_writer = csv.writer(main_results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+    with open(project_dir / 'results.csv', 'rt') as f:
+        data = csv.reader(f)
+        for index, row in enumerate(data):
+            if index != 0:
+                main_results_file_writer.writerow(row)
 
 
 def count_metrics(rootdir, project_dir, results_file_writer):
