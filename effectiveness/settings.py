@@ -27,22 +27,22 @@ DEFECT4J = '/Users/grano/Documents/PhD/defects4j/framework/bin'
 
 METRICS_DIR = BASE_DIR / 'metrics'
 
-TSDETECT_DIR = BASE_DIR / 'effectiveness/tsDetect'
+TSDETECT_DIR = METRICS_DIR / 'tsDetect'
 
-#tsdetect jar
-TSDETECT_JAR = BASE_DIR / 'effectiveness/tsDetect/TestSmellDetector.jar'
+# tsdetect jar
+TSDETECT_JAR = TSDETECT_DIR / 'TestSmellDetector.jar'
 
 # test smell jar
-TEST_SMELL_JAR = BASE_DIR / 'metrics/test-smells/test-smells.jar'
+TEST_SMELL_JAR = METRICS_DIR / 'test-smells/test-smells.jar'
 
 # code smell jar
-CODE_SMELL_JAR = BASE_DIR / 'metrics/code-quality/code-smells.jar'
+CODE_SMELL_JAR = METRICS_DIR / 'code-quality/code-smells.jar'
 
 # ck metrics jar
-CK_METRICS_JAR = BASE_DIR / 'metrics/code-quality/code-quality.jar'
+CK_METRICS_JAR = METRICS_DIR / 'code-quality/code-quality.jar'
 
 # readability path
-READABILITY_PATH = BASE_DIR / 'metrics/readability'
+READABILITY_PATH = METRICS_DIR / 'readability'
 
 # the path that contains the projects
 PROJECTS_DIR = BASE_DIR / 'projects'
