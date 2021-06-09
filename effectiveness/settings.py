@@ -53,6 +53,7 @@ SCAN_PROJECT_DIR = RESULTS_DIR / 'scan_project'
 MUTATION_RESULTS_DIR = RESULTS_DIR / 'mutation'
 
 PIT_VERSION = "1.3.2"
+CHECKSTYLE_PLUGIN_VERSION = "3.1.2"
 
 # PIT operators (https://pitest.org/quickstart/mutators/)
 OPERATORS = {}

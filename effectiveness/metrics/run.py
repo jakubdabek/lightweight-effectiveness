@@ -1,11 +1,13 @@
 import sys
 from typing import List
-from pathlib import Path
 
-import utils
+from effectiveness.metrics.checkstyle_metrics import (
+    calculate_metrics as calculate_checkstyle_metrics,
+)
+from effectiveness.metrics.java_metrics import calculate_metrics as calculate_java_metrics
 from effectiveness.mutation.utils import get_projects
-from metrics.checkstyle_metrics import calculate_metrics as calculate_checkstyle_metrics
-from metrics.java_metrics import calculate_metrics as calculate_java_metrics
+from effectiveness.settings import METRICS_DIR
+from effectiveness.utils import remove_file_if_exists
 
 
 def calcutate_metrics(projects: List[str]):
@@ -19,7 +21,7 @@ def calculate_project_metrics(project: str):
     # calculate_checkstyle_metrics(project)
 
     # JavaMetrics
-    utils.remove_file_if_exists(Path.cwd() / 'metrics/java_metrics.csv')
+    remove_file_if_exists(METRICS_DIR / 'java_metrics.csv')
     calculate_java_metrics(project)
 
 

@@ -1,5 +1,5 @@
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 
 def clear_dir(path):
@@ -10,6 +10,11 @@ def clear_dir(path):
                 shutil.rmtree(file)
             else:
                 file.unlink()
+
+
+def remove_file_if_exists(path: Path):
+    if path.is_file():
+        path.unlink()
 
 
 def tuple_if_none(value, size):
