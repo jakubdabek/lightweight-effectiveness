@@ -1,5 +1,4 @@
 import logging
-import os
 import re
 import subprocess
 from collections import OrderedDict
@@ -7,11 +6,10 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 import pandas as pd
-import glob
 from effectiveness.code_analysis.get_commit import get_last_commit_id
 from effectiveness.code_analysis.pom_module import CutPair, PomModule
 from effectiveness.pom_utils import ET, POM_NSMAP
-from effectiveness.settings import PROJECTS_DIR, SCAN_PROJECT_DIR, RESULTS_DIR, TSDETECT_JAR, TSDETECT_DIR
+from effectiveness.settings import SCAN_PROJECT_DIR, TSDETECT_DIR, TSDETECT_JAR
 
 special_cases = {
     'core': ('/src/', '/test/'),
@@ -73,7 +71,7 @@ def search_module_tests(
     project_name: str,
     module_path: Path,
     module_name: str = None,
-    results_dir=SCAN_PROJECT_DIR,
+    results_dir: Path = SCAN_PROJECT_DIR,
 ) -> List[CutPair]:
     """Scan a project and save CUTs with their tests to a file"""
 
@@ -175,21 +173,36 @@ def search_module_tests(
 
     # TODO: move to separate file
     pairs_to_tsdetect_csv(test_pairs, project_name, results_dir)
-    generate_tsdetect_csv(project_name)
-    merge_testsmells()
+    tsdetect_analyze_project(project_name, input_dir=results_dir)
+    merge_tsdetect_files()
 
     return test_pairs
 
 
-def generate_tsdetect_csv(project_name):
-    #                                    /experiments/results/scan_project/tsDetect/{project_name}.csv
-    print("Detecting smells with tsdetect")
-    print(f"\njava -jar {TSDETECT_JAR} {RESULTS_DIR}/scan_project/tsDetect_{project_name}.csv\n")
-    os.system(f"java -jar {TSDETECT_JAR} {RESULTS_DIR}/scan_project/tsDetect_{project_name}.csv")
-    os.system(f"mv TsDetect_{project_name}.csv /home/ubuntu/experiments/effectiveness/tsDetect/projects/TsDetect_{project_name}.csv")
+def tsdetect_analyze_project(
+    project_name: str,
+    *,
+    input_dir: Path = SCAN_PROJECT_DIR,
+    output_dir: Path = TSDETECT_DIR / "projects",
+):
+    print(f"* * Running TsDetect on {project_name}")
+    subprocess.run(
+        [
+            "java",
+            "-jar",
+            TSDETECT_JAR,
+            input_dir / f"tsDetect_{project_name}.csv",
+        ],
+        check=True,
+    )
+
+    output_file = Path.cwd() / f"TsDetect_{project_name}.csv"
+    output_file.rename(output_dir / output_file.name)
 
 
-def pairs_to_tsdetect_csv(test_pairs: List[CutPair], projectName, output=TSDETECT_DIR):
+def pairs_to_tsdetect_csv(
+    test_pairs: List[CutPair], projectName: str, output_dir: Path = SCAN_PROJECT_DIR
+):
     project = [projectName] * len(test_pairs)
     path_test = [test_pair.test_path for test_pair in test_pairs]
     path_src = [test_pair.source_path for test_pair in test_pairs]
@@ -198,27 +211,30 @@ def pairs_to_tsdetect_csv(test_pairs: List[CutPair], projectName, output=TSDETEC
             (
                 ('project', project),
                 ('path_test', path_test),
-                ('path_src', path_src)
+                ('path_src', path_src),
             )
         )
     )
-    output = output /f"tsDetect_{projectName}.csv"
-    print("** Saving output for tsDetect to", output)
-    frame.to_csv(output, index=False, header=False)
+
+    output_file = output_dir / f"tsDetect_{projectName}.csv"
+    print("* * Saving output for tsDetect to", output_file)
+    frame.to_csv(output_file, index=False, header=False)
 
 
-def merge_testsmells(dir=TSDETECT_DIR):
-    print("merging tsDetext csvs")
-    print(dir)
-    all_files = glob.glob(dir.__str__() + "/projects/*.csv")
-    out_file = []
-    for filename in all_files:
-        current_file = pd.read_csv(filename, index_col=None, header=0)
-        out_file.append(current_file)
-    
-    frame = pd.concat(out_file, axis=0, ignore_index=True)
-    frame.to_csv(dir / "test-smells.csv", index=False)
-    print("done merging")
+def merge_tsdetect_files(
+    *, input_dir: Path = TSDETECT_DIR / "projects", output_dir: Path = TSDETECT_DIR
+):
+    print(f"* * Merging tsDetect csvs in {input_dir}")
+
+    all_files = input_dir.glob("TsDetect_*.csv")
+
+    frame = pd.concat(
+        map(pd.read_csv, all_files),
+        ignore_index=True,
+    )
+    output_file = output_dir / "test-smells.csv"
+    frame.to_csv(output_file, index=False)
+    print(f"* * Done merging to {output_file}")
 
 
 def cut_pairs_to_csv(
