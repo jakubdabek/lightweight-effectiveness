@@ -12,15 +12,14 @@ and install them locally
 
 ### Steps
 
-1. Build the docker image
+1. Build the docker image in the main directory
     ```shell
-    docker build --pull --rm -f "Dockerfile" -t pbr-lightweight:latest "."
+    docker build --pull --rm -f "Dockerfile" -t pbr-lightweight:latest .
     ```
 2. Run docker image with [`run-docker.sh`](./run-docker.sh) bash script or use the command within manually.  
-    **Note:** For Docker Desktop for Windows users with WSL1, use
+    **Note:** On Windows, use Git Bash or WSL. For WSL1 users, because the Docker executable can only be launched with `.exe` extension, use
     ```shell
     DOCKER=docker.exe ./run-docker.sh
     ```
-3. Inside the container execute `./run-everything.sh`  
-    **Note:** Second stage, after mutation testing, requires user input, see [`create-classifier.sh`](./create-classifier.sh)
+3. Inside the container execute `./run-everything-noninteractive.sh`
 4. Results can be found in folder `data`, copy the results out with `docker cp`

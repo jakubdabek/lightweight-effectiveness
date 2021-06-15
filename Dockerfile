@@ -52,7 +52,8 @@ COPY --chown=${UID}:root metrics/ ./metrics
 COPY --chown=${UID}:root projects.csv ./
 
 COPY --chown=${UID}:root patches/ ./patches
-COPY --chown=${UID}:root get-project.sh for-each-project.sh run-everything.sh create-classifier.sh ./
+COPY --chown=${UID}:root get-project.sh for-each-project.sh run-everything.sh run-everything-noninteractive.sh create-classifier.sh ./
+RUN chmod +x *.sh
 
 # copy scripts
 COPY --chown=${UID}:root effectiveness/ ./effectiveness
