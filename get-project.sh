@@ -35,7 +35,7 @@ sed -i -E 's/http:\/\/(repo[^<]*maven)/https:\/\/\1/' pom.xml
 case "$dir"
 in
     # skip python module in OpenGrok
-    opengrok) additional=(-pl \!opengrok-tools) ;;
+    opengrok) additional=(-pl \!opengrok-tools,\!distribution) ;;
     # empty array in the default case
     *) additional=() ;;
 esac

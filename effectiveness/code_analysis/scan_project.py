@@ -3,7 +3,7 @@ import re
 import subprocess
 from collections import OrderedDict
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 import pandas as pd
 from effectiveness.code_analysis.get_commit import get_last_commit_id
@@ -16,6 +16,17 @@ special_cases = {
     'guava': ('/src/', '/guava-tests/test/'),
     'guava-gwt': ('/src/', '/test/'),
 }
+
+IGNORED_SUBMODULES: Dict[str, Set[str]] = {
+    "opengrok": {"opengrok-tools", "distribution"},
+}
+
+
+def filter_submodule_exceptions(project: str, modules: List[str]) -> List[str]:
+    try:
+        return list(set(modules) - IGNORED_SUBMODULES[project])
+    except KeyError:
+        return modules
 
 
 def get_submodules(project_path: Path) -> List[str]:
@@ -37,7 +48,7 @@ def get_submodules(project_path: Path) -> List[str]:
                 modules_list.append(detected_module)
     logging.info(f'Found {len(modules_list)} module(s):\n', modules_list)
 
-    return modules_list
+    return filter_submodule_exceptions(project_path.name, modules_list)
 
 
 def search_project_tests(project_path: Path, results_dir=SCAN_PROJECT_DIR):
